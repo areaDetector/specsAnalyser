@@ -1,0 +1,213 @@
+
+#% macro, P, Device Prefix
+#% macro, R, Device Suffix
+#% macro, PORT, Asyn Port name
+
+record(ao, "$(P)$(R)STANDBY_DELAY") 
+{
+  field(DESC, "Standby delay in seconds")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)ANALYZERSTANDBYDELAYS")
+  field(PREC, "1")
+  field(EGU,  "s")
+}
+
+record(ai, "$(P)$(R)STANDBY_DELAY_RBV") 
+{
+  field(DESC, "Standby delay in seconds")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)ANALYZERSTANDBYDELAYS")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "s")
+}
+
+record(ao, "$(P)$(R)AUX_VOLTAGE") 
+{
+  field(DESC, "Auxiliary Voltage")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)AUXVOLTAGE")
+  field(PREC, "1")
+  field(EGU,  "V")
+}
+
+record(ai, "$(P)$(R)AUX_VOLTAGE_RBV") 
+{
+  field(DESC, "Auxiliary Voltage")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)AUXVOLTAGE")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "V")
+}
+
+record(ao, "$(P)$(R)BIAS_VOLTAGE_ELECTRONS") 
+{
+  field(DESC, "Bias Voltage Electrons")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)BIASVOLTAGEELECTRONS")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)BIAS_VOLTAGE_ELECTRONS_RBV") 
+{
+  field(DESC, "Bias Voltage Electrons")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)BIASVOLTAGEELECTRONS")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)BIAS_VOLTAGE_IONS") 
+{
+  field(DESC, "Bias Voltage Ions")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)BIASVOLTAGEIONS")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)BIAS_VOLTAGE_IONS_RBV") 
+{
+  field(DESC, "Bias Voltage Ions")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)BIASVOLTAGEIONS")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)COIL_CURRENT") 
+{
+  field(DESC, "Coil Current")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)COILCURRENT")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)COIL_CURRENT_RBV") 
+{
+  field(DESC, "Coil Current")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)COILCURRENT")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)DETECTOR_VOLTAGE") 
+{
+  field(DESC, "Detector Voltage")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)DETECTORVOLTAGE")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)DETECTOR_VOLTAGE_RBV") 
+{
+  field(DESC, "Detector Voltage")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)DETECTORVOLTAGE")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)DLD_VOLTAGE") 
+{
+  field(DESC, "DLD Voltage")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)DLDVOLTAGE")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)DLD_VOLTAGE_RBV") 
+{
+  field(DESC, "DLD Voltage")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)DLDVOLTAGE")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)FOCUS_DISPLACEMENT1") 
+{
+  field(DESC, "Focus Displacement 1")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)FOCUSDISPLACEMENT1")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)FOCUS_DISPLACEMENT1_RBV") 
+{
+  field(DESC, "Focus Displacement 1")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)FOCUSDISPLACEMENT1")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)KINETIC_ENERGY_BASE") 
+{
+  field(DESC, "Kinetic Energy Base")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)KINETICENERGYBASE")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ai, "$(P)$(R)KINETIC_ENERGY_BASE_RBV") 
+{
+  field(DESC, "Kinetic Energy Base")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)KINETICENERGYBASE")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "")
+}
+
+record(ao, "$(P)$(R)MAX_COUNT_RATE") 
+{
+  field(DESC, "Maximum Count Rate")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)MAXIMUMCOUNTRATEKCPS")
+  field(PREC, "1")
+  field(EGU,  "kcps")
+}
+
+record(ai, "$(P)$(R)MAX_COUNT_RATE_RBV") 
+{
+  field(DESC, "Maximum Count Rate")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)MAXIMUMCOUNTRATEKCPS")
+  field(SCAN, "I/O Intr")
+  field(PREC, "1")
+  field(EGU,  "kcps")
+}
+
+record(longout, "$(P)$(R)SKIP_DELAY") 
+{
+  field(DESC, "Skip Delay Up/Down")
+  field(DTYP, "asynInt32")
+  field(OUT,  "@asyn($(PORT) 0)SKIPDELAYUPDOWN")
+  field(EGU,  "")
+}
+
+record(longin, "$(P)$(R)SKIP_DELAY_RBV") 
+{
+  field(DESC, "Skip Delay Up/Down")
+  field(DTYP, "asynInt32")
+  field(INP,  "@asyn($(PORT) 0)SKIPDELAYUPDOWN")
+  field(SCAN, "I/O Intr")
+  field(EGU,  "")
+}
+
+
