@@ -30,7 +30,7 @@
 // Asyn timeout
 #define SPECS_TIMEOUT 1000
 // SPECS Update rate
-#define SPECS_UPDATE_RATE 0.2
+#define SPECS_UPDATE_RATE 0.1
 // SPECS Response OK/ERROR
 #define SPECS_OK_STRING    "OK"
 #define SPECS_ERROR_STRING "ERROR"
@@ -64,6 +64,7 @@
 #define SPECS_CMD_GET_NAMES    "GetAllAnalyzerParameterNames"
 #define SPECS_CMD_GET_INFO     "GetAnalyzerParameterInfo"
 #define SPECS_CMD_GET_VALUE    "GetAnalyzerParameterValue"
+#define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
 
 // Pre-defined EPICS Parameter Names
 #define SPECSConnectedString                 "SPECS_CONNECTED"
@@ -87,6 +88,7 @@
 #define SPECSPercentCompleteIterationString  "SPECS_PCT_COMPLETE_ITER"
 #define SPECSRemainingTimeIterationString    "SPECS_RMG_TIME_ITER"
 #define SPECSAcqSpectrumString               "SPECS_ACQ_SPECTRUM"
+#define SPECSAcqImageString                  "SPECS_ACQ_IMAGE"
 
 #define SPECSRunModeString                   "SPECS_RUN_MODE"
 #define SPECSDefineString                    "SPECS_DEFINE"
@@ -109,6 +111,7 @@ class SpecsAnalyser: public ADDriver
     void specsAnalyserTask();
     asynStatus readEnum(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn);
     asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
+    asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
     asynStatus validateSpectrum();
     asynStatus defineSpectrumFAT();
     asynStatus defineSpectrumSFAT();
@@ -119,6 +122,9 @@ class SpecsAnalyser: public ADDriver
     asynStatus getAnalyserParameter(const std::string& name, int &value);
     asynStatus getAnalyserParameter(const std::string& name, double &value);
     asynStatus getAnalyserParameter(const std::string& name, std::string &value);
+    asynStatus setAnalyserParameter(const std::string& name, int value);
+    asynStatus setAnalyserParameter(const std::string& name, double value);
+    asynStatus setAnalyserParameter(const std::string& name, std::string value);
     asynStatus readIntegerData(std::map<std::string, std::string> data, const std::string& name, int &value);
     asynStatus readDoubleData(std::map<std::string, std::string> data, const std::string& name, double &value);
     asynStatus readLensModes();
@@ -136,6 +142,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus debugLevel(const std::string& method, int onOff);
     asynStatus debug(const std::string& method, const std::string& msg);
     asynStatus debug(const std::string& method, const std::string& msg, int value);
+    asynStatus debug(const std::string& method, const std::string& msg, double value);
     asynStatus debug(const std::string& method, const std::string& msg, const std::string& value);
     asynStatus debug(const std::string& method, const std::string& msg, std::map<std::string, std::string> value);
 
@@ -162,6 +169,7 @@ class SpecsAnalyser: public ADDriver
     int SPECSPercentCompleteIteration_;
     int SPECSRemainingTimeIteration_;
     int SPECSAcqSpectrum_;
+    int SPECSAcqImage_;
 
     int SPECSRunMode_;
     int SPECSDefine_;

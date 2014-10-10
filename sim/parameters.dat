@@ -1,0 +1,13 @@
+NumNonEnergyChannels,integer,10
+Bias Voltage Electrons,double,0
+Bias Voltage Ions,double,0
+Detector Voltage,double,0
+Kinetic Energy Base,double,0
+Focus Displacement 1,double,0
+Aux Voltage,double,0
+DLD Voltage,double,0
+Coil Current,double,0
+Maximum Count Rate [kcps],double,0
+Analyzer Standby Delay [s],double,0
+Skip Delay Up/Down,integer,0
+

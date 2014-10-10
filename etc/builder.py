@@ -32,6 +32,6 @@ class SpecsAnalyser(_ADBase):
 
     def Initialise(self):
         print '# specsAnalyserConfig(portName, driverName, maxBuffers, maxMemory )'
-        print '  specsAnalyserConfig( %(PORT)10s, %(DRIVER)12s, %(BUFFERS)10d, %(MEMORY)9d )' % self.__dict__
+        print 'specsAnalyserConfig( %(PORT)10s, %(DRIVER)12s, %(BUFFERS)10d, %(MEMORY)9d )' % self.__dict__
 
 

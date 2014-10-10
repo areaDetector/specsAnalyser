@@ -3,8 +3,8 @@ beginScreenProperties
 major 4
 minor 0
 release 1
-x 580
-y 83
+x 733
+y 75
 w 390
 h 820
 font "arial-bold-r-12.0"
@@ -98,7 +98,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 185
 y 475
 w 53
@@ -133,7 +133,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 5
 y 625
 w 41
@@ -148,32 +148,12 @@ autoSize
 border
 endObjectProperties
 
-# (Menu Button)
-object activeMenuButtonClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 55
-y 495
-w 120
-h 20
-fgColor index 25
-bgColor index 3
-inconsistentColor index 0
-topShadowColor index 1
-botShadowColor index 11
-controlPv "$(P)$(R)PASS_ENERGY"
-indicatorPv "$(P)$(R)PASS_ENERGY_RBV"
-font "arial-bold-r-12.0"
-endObjectProperties
-
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
 y 500
 w 29
@@ -203,9 +183,9 @@ bgColor index 3
 inconsistentColor index 0
 topShadowColor index 1
 botShadowColor index 11
-controlPv "$(P)$(R)ENERGY_MODE"
-indicatorPv "$(P)$(R)ENERGY_MODE_RBV"
-font "arial-bold-r-12.0"
+controlPv "$(P)$(R)SCAN_RANGE"
+indicatorPv "$(P)$(R)SCAN_RANGE_RBV"
+font "arial-medium-r-10.0"
 endObjectProperties
 
 # (Static Text)
@@ -213,7 +193,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 190
 y 545
 w 80
@@ -223,7 +203,7 @@ fgColor index 14
 bgColor index 3
 useDisplayBg
 value {
-  "Energy"
+  "Scan Range"
 }
 endObjectProperties
 
@@ -232,7 +212,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 190
 y 520
 w 80
@@ -263,7 +243,7 @@ topShadowColor index 1
 botShadowColor index 11
 controlPv "$(P)$(R)ACQ_MODE"
 indicatorPv "$(P)$(R)ACQ_MODE_RBV"
-font "arial-bold-r-12.0"
+font "arial-medium-r-10.0"
 endObjectProperties
 
 # (Menu Button)
@@ -283,7 +263,7 @@ topShadowColor index 1
 botShadowColor index 11
 controlPv "$(P)$(R)LENS_MODE"
 indicatorPv "$(P)$(R)LENS_MODE_RBV"
-font "arial-bold-r-12.0"
+font "arial-medium-r-10.0"
 endObjectProperties
 
 # (Static Text)
@@ -291,7 +271,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 190
 y 495
 w 80
@@ -312,7 +292,7 @@ major 10
 minor 0
 release 0
 x 145
-y 670
+y 645
 w 55
 h 20
 controlPv "$(P)$(R)AcquireTime_RBV"
@@ -332,7 +312,7 @@ major 10
 minor 0
 release 0
 x 85
-y 670
+y 645
 w 55
 h 20
 controlPv "$(P)$(R)AcquireTime"
@@ -350,9 +330,9 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
-y 670
+y 645
 w 80
 h 20
 font "arial-bold-r-12.0"
@@ -406,7 +386,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 210
 y 675
 w 56
@@ -421,52 +401,12 @@ value {
 autoSize
 endObjectProperties
 
-# (Menu Button)
-object activeMenuButtonClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 265
-y 595
-w 115
-h 20
-fgColor index 25
-bgColor index 3
-inconsistentColor index 0
-topShadowColor index 1
-botShadowColor index 11
-controlPv "$(P)$(R)ELEMENT_SET"
-indicatorPv "$(P)$(R)ELEMENT_SET_RBV"
-font "arial-bold-r-12.0"
-endObjectProperties
-
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
-x 190
-y 600
-w 48
-h 13
-font "arial-bold-r-12.0"
-fgColor index 14
-bgColor index 3
-useDisplayBg
-value {
-  "Element"
-}
-autoSize
-endObjectProperties
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 1
-release 0
+release 1
 x 210
 y 650
 w 37
@@ -523,47 +463,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
-x 190
-y 575
-w 48
-h 13
-font "arial-bold-r-12.0"
-fgColor index 14
-bgColor index 3
-useDisplayBg
-value {
-  "Detector"
-}
-autoSize
-endObjectProperties
-
-# (Menu Button)
-object activeMenuButtonClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 265
-y 570
-w 115
-h 20
-fgColor index 25
-bgColor index 3
-inconsistentColor index 0
-topShadowColor index 1
-botShadowColor index 11
-controlPv "$(P)$(R)DETECTOR_MODE"
-indicatorPv "$(P)$(R)DETECTOR_MODE_RBV"
-font "arial-bold-r-12.0"
-endObjectProperties
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 1
-release 0
+release 1
 x 5
 y 475
 w 81
@@ -598,7 +498,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 5
 y 725
 w 66
@@ -618,7 +518,7 @@ object activeBarClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 90
 y 795
 w 215
@@ -632,141 +532,6 @@ font "arial-bold-r-12.0"
 min "0"
 max "100"
 scaleFormat "FFloat"
-endObjectProperties
-
-# (Textupdate)
-object TextupdateClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 145
-y 645
-w 55
-h 20
-controlPv "$(P)$(R)FRAMES"
-fgColor index 16
-fgAlarm
-bgColor index 10
-fill
-font "arial-bold-r-12.0"
-fontAlign "center"
-endObjectProperties
-
-# (Textentry)
-object TextentryClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 85
-y 645
-w 55
-h 20
-controlPv "$(P)$(R)FRAMES"
-fgColor index 25
-fgAlarm
-bgColor index 3
-fill
-font "arial-bold-r-12.0"
-endObjectProperties
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 1
-release 0
-x 10
-y 650
-w 45
-h 13
-font "arial-bold-r-12.0"
-fgColor index 14
-bgColor index 3
-useDisplayBg
-value {
-  "Frames"
-}
-autoSize
-endObjectProperties
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 10
-y 545
-w 165
-h 20
-
-beginGroup
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 1
-release 0
-x 10
-y 550
-w 37
-h 13
-font "arial-bold-r-12.0"
-fgColor index 14
-bgColor index 3
-useDisplayBg
-value {
-  "Fixed "
-}
-autoSize
-endObjectProperties
-
-# (Textentry)
-object TextentryClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 55
-y 545
-w 55
-h 20
-controlPv "$(P)$(R)CENTRE_ENERGY"
-fgColor index 25
-fgAlarm
-bgColor index 3
-fill
-font "arial-bold-r-12.0"
-endObjectProperties
-
-# (Textupdate)
-object TextupdateClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 115
-y 545
-w 60
-h 20
-controlPv "$(P)$(R)CENTRE_ENERGY_RBV"
-fgColor index 16
-fgAlarm
-bgColor index 10
-fill
-font "arial-bold-r-12.0"
-fontAlign "center"
-endObjectProperties
-
-endGroup
-
-visPv "$(P)$(R)ACQ_MODE_RBV"
-visInvert
-visMin "0"
-visMax "1"
 endObjectProperties
 
 # (Textupdate)
@@ -808,7 +573,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
 y 780
 w 43
@@ -862,7 +627,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
 y 575
 w 37
@@ -896,18 +661,90 @@ font "arial-bold-r-12.0"
 fontAlign "center"
 endObjectProperties
 
-# (Group)
-object activeGroupClass
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 260
+y 695
+w 50
+h 20
+fgColor index 20
+onColor index 3
+offColor index 3
+topShadowColor index 1
+botShadowColor index 11
+controlPv "$(P)$(R)PAUSE"
+pressValue "1"
+releaseValue "1"
+onLabel "Pause"
+offLabel "Pause"
+3d
+font "arial-bold-r-12.0"
+endObjectProperties
+
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 310
+y 695
+w 50
+h 20
+fgColor index 19
+onColor index 3
+offColor index 3
+topShadowColor index 1
+botShadowColor index 11
+controlPv "$(P)$(R)PAUSE"
+pressValue "0"
+releaseValue "0"
+onLabel "Resume"
+offLabel "Resume"
+3d
+font "arial-bold-r-12.0"
+endObjectProperties
+
+# (Byte)
+object ByteClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 10
-y 520
-w 400
-h 260
+x 360
+y 695
+w 20
+h 20
+controlPv "$(P)$(R)PAUSE_RBV"
+lineColor index 14
+onColor index 20
+offColor index 24
+lineWidth 2
+numBits 1
+endObjectProperties
 
-beginGroup
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 210
+y 695
+w 80
+h 20
+font "arial-bold-r-12.0"
+fgColor index 14
+bgColor index 3
+useDisplayBg
+value {
+  "Pause"
+}
+endObjectProperties
 
 # (Textupdate)
 object TextupdateClass
@@ -931,7 +768,7 @@ object activeBarClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 90
 y 760
 w 215
@@ -1001,7 +838,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
 y 745
 w 42
@@ -1023,7 +860,7 @@ major 10
 minor 0
 release 0
 x 145
-y 695
+y 670
 w 55
 h 20
 controlPv "$(P)$(R)STEP_SIZE_RBV"
@@ -1036,33 +873,14 @@ font "arial-bold-r-12.0"
 fontAlign "center"
 endObjectProperties
 
-# (Textentry)
-object TextentryClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 85
-y 695
-w 55
-h 20
-controlPv "$(P)$(R)STEP_SIZE"
-precision 5
-fgColor index 25
-fgAlarm
-bgColor index 3
-fill
-font "arial-bold-r-12.0"
-endObjectProperties
-
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
-y 695
+y 670
 w 80
 h 20
 font "arial-bold-r-12.0"
@@ -1072,83 +890,6 @@ useDisplayBg
 value {
   "Size (eV)"
 }
-endObjectProperties
-
-# (Group)
-object activeGroupClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 10
-y 595
-w 165
-h 20
-
-beginGroup
-
-# (Static Text)
-object activeXTextClass
-beginObjectProperties
-major 4
-minor 1
-release 0
-x 10
-y 600
-w 60
-h 13
-font "arial-bold-r-12.0"
-fgColor index 14
-bgColor index 3
-useDisplayBg
-value {
-  "Excitation"
-}
-autoSize
-endObjectProperties
-
-# (Textentry)
-object TextentryClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 75
-y 595
-w 45
-h 20
-controlPv "$(P)$(R)EXCITATION_ENERGY"
-fgColor index 25
-fgAlarm
-bgColor index 3
-fill
-font "arial-bold-r-12.0"
-endObjectProperties
-
-# (Textupdate)
-object TextupdateClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 125
-y 595
-w 50
-h 20
-controlPv "$(P)$(R)EXCITATION_ENERGY_RBV"
-fgColor index 16
-fgAlarm
-bgColor index 10
-fill
-font "arial-bold-r-12.0"
-fontAlign "center"
-endObjectProperties
-
-endGroup
-
-visPv "$(P)$(R)ENERGY_MODE"
-visMin "0"
-visMax "1"
 endObjectProperties
 
 # (Textupdate)
@@ -1193,7 +934,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
 y 550
 w 29
@@ -1250,7 +991,7 @@ object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
+release 1
 x 10
 y 525
 w 28
@@ -1265,86 +1006,63 @@ value {
 autoSize
 endObjectProperties
 
-endGroup
-
-visPv "$(P)$(R)ACQ_MODE_RBV"
-visMin "0"
-visMax "1"
-endObjectProperties
-
-# (Message Button)
-object activeMessageButtonClass
+# (Textupdate)
+object TextupdateClass
 beginObjectProperties
-major 4
+major 10
 minor 0
 release 0
-x 260
-y 695
-w 50
+x 115
+y 495
+w 60
 h 20
-fgColor index 20
-onColor index 3
-offColor index 3
-topShadowColor index 1
-botShadowColor index 11
-controlPv "$(P)$(R)PAUSE"
-pressValue "1"
-releaseValue "1"
-onLabel "Pause"
-offLabel "Pause"
-3d
+controlPv "$(P)$(R)PASS_ENERGY_RBV"
+fgColor index 16
+fgAlarm
+bgColor index 10
+fill
+font "arial-bold-r-12.0"
+fontAlign "center"
+endObjectProperties
+
+# (Textentry)
+object TextentryClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 55
+y 495
+w 55
+h 20
+controlPv "$(P)$(R)PASS_ENERGY"
+fgColor index 25
+fgAlarm
+bgColor index 3
+fill
 font "arial-bold-r-12.0"
 endObjectProperties
 
-# (Message Button)
-object activeMessageButtonClass
+# (Group)
+object activeGroupClass
 beginObjectProperties
 major 4
 minor 0
 release 0
-x 310
+x 10
 y 695
-w 50
+w 190
 h 20
-fgColor index 19
-onColor index 3
-offColor index 3
-topShadowColor index 1
-botShadowColor index 11
-controlPv "$(P)$(R)PAUSE"
-pressValue "0"
-releaseValue "0"
-onLabel "Resume"
-offLabel "Resume"
-3d
-font "arial-bold-r-12.0"
-endObjectProperties
 
-# (Byte)
-object ByteClass
-beginObjectProperties
-major 4
-minor 0
-release 0
-x 360
-y 695
-w 20
-h 20
-controlPv "$(P)$(R)PAUSE_RBV"
-lineColor index 14
-onColor index 20
-offColor index 24
-lineWidth 2
-numBits 1
-endObjectProperties
+beginGroup
 
 # (Static Text)
 object activeXTextClass
 beginObjectProperties
 major 4
 minor 1
-release 0
-x 210
+release 1
+x 10
 y 695
 w 80
 h 20
@@ -1353,7 +1071,91 @@ fgColor index 14
 bgColor index 3
 useDisplayBg
 value {
-  "Pause"
+  "Samples"
 }
+endObjectProperties
+
+# (Textentry)
+object TextentryClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 85
+y 695
+w 55
+h 20
+controlPv "$(P)$(R)VALUES"
+fgColor index 25
+fgAlarm
+bgColor index 3
+fill
+font "arial-bold-r-12.0"
+endObjectProperties
+
+# (Textupdate)
+object TextupdateClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 145
+y 695
+w 55
+h 20
+controlPv "$(P)$(R)VALUES_RBV"
+fgColor index 16
+fgAlarm
+bgColor index 10
+fill
+font "arial-bold-r-12.0"
+fontAlign "center"
+endObjectProperties
+
+endGroup
+
+visPv "$(P)$(R)ACQ_MODE"
+visMin "1"
+visMax "2"
+endObjectProperties
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 85
+y 670
+w 55
+h 20
+
+beginGroup
+
+# (Textentry)
+object TextentryClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 85
+y 670
+w 55
+h 20
+controlPv "$(P)$(R)STEP_SIZE"
+precision 5
+fgColor index 25
+fgAlarm
+bgColor index 3
+fill
+font "arial-bold-r-12.0"
+endObjectProperties
+
+endGroup
+
+visPv "$(P)$(R)ACQ_MODE"
+visInvert
+visMin "1"
+visMax "2"
 endObjectProperties
 

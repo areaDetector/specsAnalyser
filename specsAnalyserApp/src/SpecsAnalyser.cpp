@@ -99,6 +99,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   createParam(SPECSPercentCompleteIterationString,  asynParamInt32,         &SPECSPercentCompleteIteration_);
   createParam(SPECSRemainingTimeIterationString,    asynParamFloat64,       &SPECSRemainingTimeIteration_);
   createParam(SPECSAcqSpectrumString,               asynParamFloat64Array,  &SPECSAcqSpectrum_);
+  createParam(SPECSAcqImageString,                  asynParamFloat64Array,  &SPECSAcqImage_);
 
   createParam(SPECSRunModeString,                   asynParamInt32,         &SPECSRunMode_);
   createParam(SPECSDefineString,                    asynParamInt32,         &SPECSDefine_);
@@ -272,7 +273,6 @@ void SpecsAnalyser::specsAnalyserTask()
         default:
           // This is bad news, invalid mode of operation abort the scan
           debug(functionName, "Invalid mode of operation specified, aborting", runMode);
-          // TODO add the abort code
           break;
       }
 
@@ -321,6 +321,10 @@ void SpecsAnalyser::specsAnalyserTask()
       getIntegerParam(NDDataType, (int *) &dataType);
     }
 
+    // Initialise the image data points
+    for (int x = 0; x < energyChannels*nonEnergyChannels; x++){
+      image[x] = 0.0;
+    }
     // Initialise the spectrum data points
     for (int x = 0; x < energyChannels; x++){
       spectrum[x] = 0.0;
@@ -348,6 +352,7 @@ void SpecsAnalyser::specsAnalyserTask()
     getIntegerParam(ADNumImages, &numImages);
     getIntegerParam(ADImageMode, &imageMode);
 
+    // Set the status and message to notify user we are acquiring
     setIntegerParam(ADStatus, ADStatusAcquire);
     setStringParam(ADStatusMessage, "Acquiring data...");
 
@@ -374,10 +379,7 @@ void SpecsAnalyser::specsAnalyserTask()
 
         // Check the number of available data points, and retrieve any that are not already in memory
         readIntegerData(data, "NumberOfAcquiredPoints", numDataPoints);
-        // As the indexing starts from zero numDataPoints is actually 1 more
-        if (numDataPoints > 0){
-          numDataPoints++;
-        }
+
         if (numDataPoints > currentDataPoint){
           // If numDataPoints is greater than currentDataPoint then request the extra points
           readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
@@ -411,6 +413,8 @@ void SpecsAnalyser::specsAnalyserTask()
             // After the first iteration the spectrum is already full og data, so always post the full array
             doCallbacksFloat64Array(spectrum, energyChannels, SPECSAcqSpectrum_, 0);
           }
+          // Notify listeners of the update to the image data
+          doCallbacksFloat64Array(image, (energyChannels*nonEnergyChannels), SPECSAcqImage_, 0);
         
           // Set the percent complete and current sample number
           setIntegerParam(SPECSPercentCompleteIteration_, (int)(((currentDataPoint)*100)/energyChannels));
@@ -499,12 +503,12 @@ void SpecsAnalyser::specsAnalyserTask()
 
 /** Called when asyn clients call pasynEnum->read().
   * The base class implementation simply prints an error message.
-  * @pasynUser - pasynUser structure that encodes the reason and address.
-  * @strings - Array of string pointers.
-  * @values - Array of values
-  * @severities - Array of severities
-  * @nElements - Size of value array
-  * @nIn - Number of elements actually returned */
+  * @param pasynUser - pasynUser structure that encodes the reason and address.
+  * @param strings - Array of string pointers.
+  * @param values - Array of values
+  * @param severities - Array of severities
+  * @param nElements - Size of value array
+  * @param nIn - Number of elements actually returned */
 asynStatus SpecsAnalyser::readEnum(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn)
 {
   const char *functionName = "SpecsAnalyser::readEnum";
@@ -556,20 +560,20 @@ asynStatus SpecsAnalyser::readEnum(asynUser *pasynUser, char *strings[], int val
  * Called when asyn clients call pasynInt32->write().
  * Write integer value to the drivers parameter table.
  *
- * @pasynUser - Pointer to the asyn user structure.
- * @value - The new value to write
+ * @param pasynUser - Pointer to the asyn user structure.
+ * @param value - The new value to write
  */
 asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
 {
   const char *functionName = "SpecsAnalyser::writeInt32";
   asynStatus status = asynSuccess;
   int function = pasynUser->reason;
-  int OldValue;
+  int oldValue;
 
   // parameters for functions
   int adstatus;
 
-  getIntegerParam(function, &OldValue);
+  getIntegerParam(function, &oldValue);
   setIntegerParam(function, value);
   getIntegerParam(ADStatus, &adstatus);
 
@@ -604,6 +608,52 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
   } else if (function == SPECSValidate_){
     // Validate the currently defined spectrum
     status = validateSpectrum();
+  } else if (function == SPECSPauseAcq_){
+    // Check for a pause request
+    int acquire = 0;
+    getIntegerParam(ADAcquire, &acquire);
+    if (value == 1){
+      // Check we are not already paused and are acquiring
+      if (oldValue == 0 && acquire == 1){
+        // Send the pause command
+        sendSimpleCommand(SPECS_CMD_PAUSE);
+        debug(functionName, "Pausing the current acquisition");
+        setStringParam(ADStatusMessage, "Acquisition paused");
+      } else {
+        // Do not act on the pause, we are not in the correct state
+        setIntegerParam(SPECSPauseAcq_, oldValue);
+        debug(functionName, "Unable to pause in the current state");
+      }
+    } else if (value == 0){
+      // Check we are pause and acquiring
+      if (oldValue == 1 && acquire == 1){
+        // Send the resume command
+        sendSimpleCommand(SPECS_CMD_RESUME);
+        debug(functionName, "Resuming the paused acquisition");
+        setStringParam(ADStatusMessage, "Acquiring data...");
+      } else {
+        // Do not act on the resume, we are not in the correct state
+        setIntegerParam(SPECSPauseAcq_, oldValue);
+        debug(functionName, "Unable to resume in the current state");
+      }
+    }
+  } else {
+    // Check if the function is one of our stored parameter index values
+    if (paramIndexes_.count(function) == 1){
+      // This means the parameter was read out from the SPECS hardware at startup
+      debug(functionName, "Update request of parameter", paramIndexes_[function]);
+      debug(functionName, "New Value", value);
+      status = setAnalyserParameter(paramMap_[paramIndexes_[function]], value);
+      int newValue = 0;
+      if (status == asynSuccess){
+        status = getAnalyserParameter(paramMap_[paramIndexes_[function]], newValue);
+      }
+      if (status == asynSuccess){
+        setIntegerParam(function, newValue);
+      } else {
+        setIntegerParam(function, oldValue);
+      }
+    }
   }
 
   this->lock();
@@ -617,6 +667,59 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
   } else {
     debug(functionName, "Function", function);
     debug(functionName, "Value", value);
+  }
+  return status;
+}
+
+/**
+ * Called when asyn clients call pasynFloat64->write().
+ * Write integer value to the drivers parameter table.
+ *
+ * @param pasynUser - Pointer to the asyn user structure.
+ * @param value - The new value to write
+ */
+asynStatus SpecsAnalyser::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
+{
+  const char *functionName = "SpecsAnalyser::writeFloat64";
+  asynStatus status = asynSuccess;
+  int function = pasynUser->reason;
+  double oldValue;
+
+  // parameters for functions
+  int adstatus;
+
+  getDoubleParam(function, &oldValue);
+  setDoubleParam(function, value);
+  getIntegerParam(ADStatus, &adstatus);
+
+  // Check if the function is one of our stored parameter index values
+  if (paramIndexes_.count(function) == 1){
+    // This means the parameter was read out from the SPECS hardware at startup
+    debug(functionName, "Update request of parameter", paramIndexes_[function]);
+    debug(functionName, "New Value", value);
+    status = setAnalyserParameter(paramMap_[paramIndexes_[function]], value);
+    double newValue = 0.0;
+    if (status == asynSuccess){
+      status = getAnalyserParameter(paramMap_[paramIndexes_[function]], newValue);
+    }
+    if (status == asynSuccess){
+      setDoubleParam(function, newValue);
+    } else {
+      setDoubleParam(function, oldValue);
+    }
+  }
+
+  this->lock();
+  // Do callbacks so higher layers see any changes
+  callParamCallbacks();
+  this->unlock();
+  if (status){
+    debug(functionName, "Error, status", status);
+    debug(functionName, "Error, function", function);
+    debug(functionName, "Error, value", value);
+  } else {
+    debug(functionName, "Function", function);
+    debug(functionName, "Value", (double)value);
   }
   return status;
 }
@@ -1059,6 +1162,49 @@ asynStatus SpecsAnalyser::getAnalyserParameter(const std::string& name, std::str
   return status;
 }
 
+asynStatus SpecsAnalyser::setAnalyserParameter(const std::string& name, int value)
+{
+  const char * functionName = "SpecsAnalyser::setAnalyserParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_SET_VALUE;
+  std::stringstream svalue;
+  
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Value", value);
+  svalue << value;
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\"" + " Value:" + svalue.str(), &data);
+  return status;
+}
+
+asynStatus SpecsAnalyser::setAnalyserParameter(const std::string& name, double value)
+{
+  const char * functionName = "SpecsAnalyser::setAnalyserParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_SET_VALUE;
+  std::stringstream svalue;
+  
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Value", value);
+  svalue << value;
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\"" + " Value:" + svalue.str(), &data);
+  return status;
+}
+
+asynStatus SpecsAnalyser::setAnalyserParameter(const std::string& name, std::string value)
+{
+  const char * functionName = "SpecsAnalyser::setAnalyserParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_SET_VALUE;
+  
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Value", value);
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\"" + " Value:" + value, &data);
+  return status;
+}
+
 asynStatus SpecsAnalyser::readIntegerData(std::map<std::string, std::string> data, const std::string& name, int &value)
 {
   const char * functionName = "SpecsAnalyser::readIntegerData";
@@ -1146,11 +1292,11 @@ asynStatus SpecsAnalyser::readRunModes()
  * Connect to the underlying low level Asyn port that is used for comms.
  * This uses the asynOctetSyncIO interface, and also sets the input and output terminators.
  *
- * @port - Name of the port to connect to.
- * @addr - Address to connect to.
- * @ppasynUser - Pointer to the asyn user structure.
- * @inputEos - String input EOS.
- * @outputEos - String output EOS.
+ * @param port - Name of the port to connect to.
+ * @param addr - Address to connect to.
+ * @param ppasynUser - Pointer to the asyn user structure.
+ * @param inputEos - String input EOS.
+ * @param outputEos - String output EOS.
  */
 asynStatus SpecsAnalyser::asynPortConnect(const char *port, int addr, asynUser **ppasynUser, const char *inputEos, const char *outputEos)
 {
@@ -1198,9 +1344,9 @@ asynStatus SpecsAnalyser::asynPortConnect(const char *port, int addr, asynUser *
 /**
  * This sends a command to the device and parses the response.  Data is returned
  * in a std::map that is indexed by the parameter name
- * @command - String command to send.
- * @response - String response back (OK or ERROR)
- * @data - Map of data items indexed by name
+ * @param command - String command to send.
+ * @param response - String response back (OK or ERROR)
+ * @param data - Map of data items indexed by name
  */
 asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::string &response, std::map<std::string, std::string> &data)
 {
@@ -1316,8 +1462,8 @@ asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::strin
 
 /**
  * Wrapper for asynOctetSyncIO write/read functions.
- * @command - String command to send.
- * @response - String response back.
+ * @param command - String command to send.
+ * @param response - String response back.
  */
 asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
 {
@@ -1417,6 +1563,7 @@ asynStatus SpecsAnalyser::initDebugger(int initDebug)
   debugMap_["SpecsAnalyser::specsAnalyserTask"]        = initDebug;
   debugMap_["SpecsAnalyser::readEnum"]                 = initDebug;
   debugMap_["SpecsAnalyser::writeInt32"]               = initDebug;
+  debugMap_["SpecsAnalyser::writeFloat64"]             = initDebug;
   debugMap_["SpecsAnalyser::validateSpectrum"]         = initDebug;
   debugMap_["SpecsAnalyser::defineSpectrumFAT"]        = initDebug;
   debugMap_["SpecsAnalyser::defineSpectrumSFAT"]       = initDebug;
@@ -1443,6 +1590,7 @@ asynStatus SpecsAnalyser::debugLevel(const std::string& method, int onOff)
     debugMap_["SpecsAnalyser::specsAnalyserTask"]        = onOff;
     debugMap_["SpecsAnalyser::readEnum"]                 = onOff;
     debugMap_["SpecsAnalyser::writeInt32"]               = onOff;
+    debugMap_["SpecsAnalyser::writeFloat64"]             = onOff;
     debugMap_["SpecsAnalyser::validateSpectrum"]         = onOff;
     debugMap_["SpecsAnalyser::defineSpectrumFAT"]        = onOff;
     debugMap_["SpecsAnalyser::defineSpectrumSFAT"]       = onOff;
@@ -1479,6 +1627,19 @@ asynStatus SpecsAnalyser::debug(const std::string& method, const std::string& ms
 }
 
 asynStatus SpecsAnalyser::debug(const std::string& method, const std::string& msg, int value)
+{
+  // First check for the debug entry in the debug map
+  if (debugMap_.count(method) == 1){
+    // Now check if debug is turned on
+    if (debugMap_[method] == 1){
+      // Print out the debug message
+      std::cout << method << ": " << msg << " [" << value << "]" << std::endl;
+    }
+  }
+  return asynSuccess;
+}
+
+asynStatus SpecsAnalyser::debug(const std::string& method, const std::string& msg, double value)
 {
   // First check for the debug entry in the debug map
   if (debugMap_.count(method) == 1){

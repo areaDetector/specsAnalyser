@@ -38,12 +38,22 @@ record(longin, "$(P)$(R)MinX_RBV")
   field(DISA, "1")
 }
 
+record(longin, "$(P)$(R)MaxSizeX_RBV")
+{
+  field(DISA, "1")
+}
+
 record(longout, "$(P)$(R)MinY")
 {
   field(DISA, "1")
 }
 
 record(longin, "$(P)$(R)MinY_RBV")
+{
+  field(DISA, "1")
+}
+
+record(longin, "$(P)$(R)MaxSizeX_RBV")
 {
   field(DISA, "1")
 }
@@ -116,11 +126,29 @@ record(longin, "$(P)$(R)TOTAL_POINTS_ITERATION_RBV")
 }
 
 # Report back the number of samples in the current spectrum
-record(longin, "$(P)$(R)SAMPLES_RBV") 
+record(longin, "$(P)$(R)TOTAL_POINTS_RBV") 
 {
   field(DESC, "Number of samples Readback")
   field(DTYP, "asynInt32")
   field(INP,  "@asyn($(PORT) 0)SPECS_SAMPLES")
+  field(SCAN, "I/O Intr")
+}
+
+# Pause an acquisition
+record(longout, "$(P)$(R)PAUSE") 
+{
+  field(DESC, "Pause an acquisition")
+  field(DTYP, "asynInt32")
+  field(OUT,  "@asyn($(PORT) 0)SPECS_PAUSE_ACQ")
+  field(VAL,  "0")
+}
+
+# Report back the number of snapshot values
+record(longin, "$(P)$(R)PAUSE_RBV") 
+{
+  field(DESC, "Current paused status")
+  field(DTYP, "asynInt32")
+  field(INP,  "@asyn($(PORT) 0)SPECS_PAUSE_ACQ")
   field(SCAN, "I/O Intr")
 }
 
@@ -152,7 +180,7 @@ record(longin, "$(P)$(R)CURRENT_POINT_RBV")
 }
 
 # Report back the number of samples in the current spectrum
-record(longin, "$(P)$(R)CURRENT_SAMPLE_RBV") 
+record(longin, "$(P)$(R)CURRENT_CHANNEL_RBV") 
 {
   field(DESC, "Current sample number readback")
   field(DTYP, "asynInt32")
@@ -212,7 +240,18 @@ record(waveform, "$(P)$(R)INT_SPECTRUM")
   field(INP,  "@asyn($(PORT) 0)SPECS_ACQ_SPECTRUM")
   field(SCAN, "I/O Intr")
   field(FTVL, "DOUBLE")
-  field(NELM, "500")
+  field(NELM, "2000")
+}
+
+# Acquired image of data
+record(waveform, "$(P)$(R)IMAGE")
+{
+  field(DESC, "Data Image")
+  field(DTYP, "asynFloat64ArrayIn")
+  field(INP,  "@asyn($(PORT) 0)SPECS_ACQ_IMAGE")
+  field(SCAN, "I/O Intr")
+  field(FTVL, "DOUBLE")
+  field(NELM, "4000")
 }
 
 # Report back the server name
@@ -281,7 +320,7 @@ record(mbbi, "$(P)$(R)SCAN_RANGE_RBV")
 }
 
 # Select run mode
-record(mbbo, "$(P)$(R)RUN_MODE") 
+record(mbbo, "$(P)$(R)ACQ_MODE") 
 {
   field(DESC, "Run Mode")
   field(DTYP, "asynInt32")
@@ -291,7 +330,7 @@ record(mbbo, "$(P)$(R)RUN_MODE")
 }
 
 # Report back current run mode
-record(mbbi, "$(P)$(R)RUN_MODE_RBV") 
+record(mbbi, "$(P)$(R)ACQ_MODE_RBV") 
 {
   field(DESC, "Run Mode Readback")
   field(DTYP, "asynInt32")
