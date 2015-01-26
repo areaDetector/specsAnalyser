@@ -85,6 +85,8 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   createParam(SPECSProtocolVersionString,           asynParamOctet,         &SPECSProtocolVersion_);
   createParam(SPECSStartEnergyString,               asynParamFloat64,       &SPECSStartEnergy_);
   createParam(SPECSEndEnergyString,                 asynParamFloat64,       &SPECSEndEnergy_);
+  createParam(SPECSRetardingRatioString,            asynParamFloat64,       &SPECSRetardingRatio_);
+  createParam(SPECSKineticEnergyString,             asynParamFloat64,       &SPECSKineticEnergy_);
   createParam(SPECSStepWidthString,                 asynParamFloat64,       &SPECSStepWidth_);
   createParam(SPECSSamplesString,                   asynParamInt32,         &SPECSSamples_);
   createParam(SPECSSamplesIterationString,          asynParamInt32,         &SPECSSamplesIteration_);
@@ -114,11 +116,11 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   setIntegerParam(SPECSPercentComplete_,           0);
   setIntegerParam(SPECSCurrentSample_,             0);
   setIntegerParam(SPECSSnapshotValues_,            1);
+  setIntegerParam(SPECSSamplesIteration_,          0);
   setIntegerParam(SPECSPercentCompleteIteration_,  0);
   setIntegerParam(SPECSCurrentSampleIteration_,    0);
   setDoubleParam(SPECSRemainingTime_,              0.0);
 	setStringParam(ADManufacturer,                   "SPECS");
-  setStringParam(ADModel,                          "Phoibos NAP 150");
 
   if (status == asynSuccess){
     // Connect our Asyn user to the low level port that is a parameter to this constructor
@@ -133,6 +135,11 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
     }
   }
 
+  // Read in the device name
+  if (status == asynSuccess){
+    status = readDeviceVisibleName();
+  }
+  
   // Setup all of the available parameters obtained from the hardware
   if (status == asynSuccess){
     status = setupEPICSParameters();
@@ -264,11 +271,11 @@ void SpecsAnalyser::specsAnalyserTask()
           break;
         case SPECS_RUN_FRR:
           // Define the fixed retarding ratio spectrum
-          //defineSpectrumFRR();
+          defineSpectrumFRR();
           break;
         case SPECS_RUN_FE:
           // Define the fixed energy spectrum
-          //defineSpectrumFE();
+          defineSpectrumFE();
           break;
         default:
           // This is bad news, invalid mode of operation abort the scan
@@ -599,10 +606,13 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
         status = defineSpectrumFAT();
         break;
       case SPECS_RUN_SFAT:
+        status = defineSpectrumSFAT();
         break;
       case SPECS_RUN_FRR:
+        status = defineSpectrumFRR();
         break;
       case SPECS_RUN_FE:
+        status = defineSpectrumFE();
         break;
     }
   } else if (function == SPECSValidate_){
@@ -900,6 +910,34 @@ asynStatus SpecsAnalyser::defineSpectrumSFAT()
   return status;
 }
 
+asynStatus SpecsAnalyser::defineSpectrumFRR()
+{
+  static const char *functionName = "SpecsAnalyser::defineSpectrumFRR";
+
+  asynStatus status = asynSuccess;
+  std::stringstream command;
+  std::string response = "";
+  std::map<std::string, std::string> data;
+  double dvalue = 0.0;
+  int ivalue = 0;
+  
+  return status;
+}
+
+asynStatus SpecsAnalyser::defineSpectrumFE()
+{
+  static const char *functionName = "SpecsAnalyser::defineSpectrumFE";
+
+  asynStatus status = asynSuccess;
+  std::stringstream command;
+  std::string response = "";
+  std::map<std::string, std::string> data;
+  double dvalue = 0.0;
+  int ivalue = 0;
+  
+  return status;
+}
+
 asynStatus SpecsAnalyser::readAcquisitionData(int startIndex, int endIndex, std::vector<double> &values)
 {
   static const char *functionName = "SpecsAnalyser::readAcquisitionData";
@@ -968,6 +1006,28 @@ asynStatus SpecsAnalyser::sendSimpleCommand(const std::string& command, std::map
   }
   if (data != NULL){
     *data = ldata;
+  }
+  return status;
+}
+
+/**
+ * This method queries the analyser for its device name to populate
+ * the ADModel parameter
+ */
+asynStatus SpecsAnalyser::readDeviceVisibleName()
+{
+  const char * functionName = "SpecsAnalyser::readDeviceVisibleName";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  
+  // alyzerParameterNames to get the list of parameters
+  status = sendSimpleCommand(SPECS_CMD_GET_VISNAME, &data);
+  debug(functionName, "Returned parameter map", data);
+  if (status == asynSuccess){
+    std::string nameString = data["AnalyzerVisibleName"];
+    cleanString(nameString, "\"");
+    setStringParam(ADModel, nameString.c_str());
+    callParamCallbacks();
   }
   return status;
 }
@@ -1567,6 +1627,8 @@ asynStatus SpecsAnalyser::initDebugger(int initDebug)
   debugMap_["SpecsAnalyser::validateSpectrum"]         = initDebug;
   debugMap_["SpecsAnalyser::defineSpectrumFAT"]        = initDebug;
   debugMap_["SpecsAnalyser::defineSpectrumSFAT"]       = initDebug;
+  debugMap_["SpecsAnalyser::defineSpectrumFRR"]        = initDebug;
+  debugMap_["SpecsAnalyser::defineSpectrumFE"]         = initDebug;
   debugMap_["SpecsAnalyser::readAcquisitionData"]      = initDebug;
   debugMap_["SpecsAnalyser::sendSimpleCommand"]        = initDebug;
   debugMap_["SpecsAnalyser::setupEPICSParameters"]     = initDebug;
@@ -1594,6 +1656,8 @@ asynStatus SpecsAnalyser::debugLevel(const std::string& method, int onOff)
     debugMap_["SpecsAnalyser::validateSpectrum"]         = onOff;
     debugMap_["SpecsAnalyser::defineSpectrumFAT"]        = onOff;
     debugMap_["SpecsAnalyser::defineSpectrumSFAT"]       = onOff;
+    debugMap_["SpecsAnalyser::defineSpectrumFRR"]        = onOff;
+    debugMap_["SpecsAnalyser::defineSpectrumFE"]         = onOff;
     debugMap_["SpecsAnalyser::readAcquisitionData"]      = onOff;
     debugMap_["SpecsAnalyser::sendSimpleCommand"]        = onOff;
     debugMap_["SpecsAnalyser::setupEPICSParameters"]     = onOff;

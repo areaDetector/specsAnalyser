@@ -63,6 +63,7 @@
 #define SPECS_CMD_CLEAR        "ClearSpectrum"
 #define SPECS_CMD_GET_NAMES    "GetAllAnalyzerParameterNames"
 #define SPECS_CMD_GET_INFO     "GetAnalyzerParameterInfo"
+#define SPECS_CMD_GET_VISNAME  "GetAnalyzerVisibleName"
 #define SPECS_CMD_GET_VALUE    "GetAnalyzerParameterValue"
 #define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
 
@@ -74,6 +75,8 @@
 #define SPECSProtocolVersionString           "SPECS_PROTOCOL_VERSION"
 #define SPECSStartEnergyString               "SPECS_START_ENERGY"
 #define SPECSEndEnergyString                 "SPECS_END_ENERGY"
+#define SPECSRetardingRatioString            "SPECS_RETARDING_RATIO"
+#define SPECSKineticEnergyString             "SPECS_KINETIC_ENERGY"
 #define SPECSStepWidthString                 "SPECS_STEP_WIDTH"
 #define SPECSSamplesString                   "SPECS_SAMPLES"
 #define SPECSSamplesIterationString          "SPECS_SAMPLES_ITERATION"
@@ -115,8 +118,11 @@ class SpecsAnalyser: public ADDriver
     asynStatus validateSpectrum();
     asynStatus defineSpectrumFAT();
     asynStatus defineSpectrumSFAT();
+    asynStatus defineSpectrumFRR();
+    asynStatus defineSpectrumFE();
     asynStatus readAcquisitionData(int startIndex, int endIndex, std::vector<double> &values);
     asynStatus sendSimpleCommand(const std::string& command, std::map<std::string, std::string> *data = NULL);
+    asynStatus readDeviceVisibleName();
     asynStatus setupEPICSParameters();
     asynStatus getAnalyserParameterType(const std::string& name, SPECSValueType_t &value);
     asynStatus getAnalyserParameter(const std::string& name, int &value);
@@ -155,6 +161,8 @@ class SpecsAnalyser: public ADDriver
     int SPECSProtocolVersion_;
     int SPECSStartEnergy_;
     int SPECSEndEnergy_;
+    int SPECSRetardingRatio_;
+    int SPECSKineticEnergy_;
     int SPECSStepWidth_;
     int SPECSSamples_;
     int SPECSSamplesIteration_;

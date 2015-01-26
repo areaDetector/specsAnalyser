@@ -433,6 +433,48 @@ record(calc, "$(P)$(R)ENERGY_WIDTH_RBV")
   field(PREC, "3")
 }
 
+# User enters desired kinetic energy
+record(ao, "$(P)$(R)KINETIC_ENERGY") 
+{
+  field(DESC, "Kinetic Energy")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)SPECS_KINETIC_ENERGY")
+  field(PREC, "3")
+  field(PINI, "YES")
+  field(VAL,  "300.0")
+}
+
+# Report back current kinetic energy
+record(ai, "$(P)$(R)KINETIC_ENERGY_RBV") 
+{
+  field(DESC, "Kinetic Energy Readback")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)SPECS_KINETIC_ENERGY")
+  field(SCAN, "I/O Intr")
+  field(PREC, "3")
+}
+
+# User enters desired retarding ratio
+record(ao, "$(P)$(R)RETARDING_RATIO") 
+{
+  field(DESC, "Retarding Ratio")
+  field(DTYP, "asynFloat64")
+  field(OUT,  "@asyn($(PORT) 0)SPECS_RETARDING_RATIO")
+  field(PREC, "3")
+  field(PINI, "YES")
+  field(VAL,  "10.0")
+}
+
+# Report back current retarding ratio
+record(ai, "$(P)$(R)RETARDING_RATIO_RBV") 
+{
+  field(DESC, "Retarding Ratio Readback")
+  field(DTYP, "asynFloat64")
+  field(INP,  "@asyn($(PORT) 0)SPECS_RETARDING_RATIO")
+  field(SCAN, "I/O Intr")
+  field(PREC, "3")
+}
+
 ###################### Step ########################
 
 # User enters desired energy step size
