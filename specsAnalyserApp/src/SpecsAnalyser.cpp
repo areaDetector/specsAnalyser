@@ -62,7 +62,8 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
 
   //Initialize non static data members
   portUser_  = NULL;
-
+  strcpy(driverPort_, driverPort);
+  
   // Create the epicsEvents for signalling to the SPECS Analyser task when acquisition starts
   this->startEventId_ = epicsEventCreate(epicsEventEmpty);
   if (!this->startEventId_){
@@ -78,6 +79,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   }
 
   // Create all SPECS parameters
+  createParam(SPECSConnectString,                   asynParamInt32,         &SPECSConnect_);
   createParam(SPECSConnectedString,                 asynParamInt32,         &SPECSConnected_);
   createParam(SPECSPauseAcqString,                  asynParamInt32,         &SPECSPauseAcq_);
   createParam(SPECSMsgCounterString,                asynParamInt32,         &SPECSMsgCounter_);
@@ -123,16 +125,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
 	setStringParam(ADManufacturer,                   "SPECS");
 
   if (status == asynSuccess){
-    // Connect our Asyn user to the low level port that is a parameter to this constructor
-    status = asynPortConnect(driverPort, 0, &portUser_, "\n", "\n");
-    if (status != asynSuccess){
-      debug(functionName, "Failed to connect to low level asynOctetSyncIO port", driverPort);
-      // Failure, set the connected status to 0
-      setIntegerParam(SPECSConnected_,     0);
-    } else {
-      // Success, set the connected status to 1
-      setIntegerParam(SPECSConnected_,     1);
-    }
+    status = connect();
   }
 
   // Read in the device name
@@ -181,6 +174,39 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
     setStringParam(ADStatusMessage, "FATAL: Failed to initialise - check IOC log");
     callParamCallbacks();
   }
+}
+
+asynStatus SpecsAnalyser::connect()
+{
+  asynStatus status = asynSuccess;
+  const char *functionName = "SpecsAnalyser::connect";
+
+  // Connect our Asyn user to the low level port that is a parameter to this constructor
+  status = asynPortConnect(driverPort_, 0, &portUser_, "\n", "\n");
+  if (status != asynSuccess){
+    debug(functionName, "Failed to connect to low level asynOctetSyncIO port", driverPort_);
+    // Failure, set the connected status to 0
+    setIntegerParam(SPECSConnected_,     0);
+  } else {
+    // Success, set the connected status to 1
+    setIntegerParam(SPECSConnected_,     1);
+    setStringParam(ADStatusMessage, "Connected to SPECS");
+    callParamCallbacks();
+  }
+  return status;
+}
+
+asynStatus SpecsAnalyser::disconnect()
+{
+  asynStatus status = asynSuccess;
+  const char *functionName = "SpecsAnalyser::disconnect";
+
+  // Connect our Asyn user to the low level port that is a parameter to this constructor
+  status = asynPortDisconnect(portUser_);
+  if (status != asynSuccess){
+    debug(functionName, "Failed to disconnect to low level asynOctetSyncIO port", driverPort_);
+  }
+  return status;
 }
 
 /** 
@@ -251,258 +277,274 @@ void SpecsAnalyser::specsAnalyserTask()
       getIntegerParam(ADNumExposures, &iterations);
 
       // Read the number of non-energy channels ready to store the data
-      getAnalyserParameter("NumNonEnergyChannels", nonEnergyChannels);
-      setIntegerParam(SPECSNonEnergyChannels_, nonEnergyChannels);
-
+      status = getAnalyserParameter("NumNonEnergyChannels", nonEnergyChannels);
+      if (status == asynSuccess){
+        setIntegerParam(SPECSNonEnergyChannels_, nonEnergyChannels);
+      }
+      
       // Clear any stale data from previous acquisitions
-      sendSimpleCommand(SPECS_CMD_CLEAR);
+      if (status == asynSuccess){
+        sendSimpleCommand(SPECS_CMD_CLEAR);
 
-      // Check the desired run mode
-      getIntegerParam(SPECSRunMode_, &runMode);
-      // Define the spectrum according to the run mode
-      switch(runMode){
-        case SPECS_RUN_FAT:
-          // Define the fixed analyser transmission spectrum
-          defineSpectrumFAT();
-          break;
-        case SPECS_RUN_SFAT:
-          // Define the snapshot fixed analyser transmission spectrum
-          defineSpectrumSFAT();
-          break;
-        case SPECS_RUN_FRR:
-          // Define the fixed retarding ratio spectrum
-          defineSpectrumFRR();
-          break;
-        case SPECS_RUN_FE:
-          // Define the fixed energy spectrum
-          defineSpectrumFE();
-          break;
-        default:
-          // This is bad news, invalid mode of operation abort the scan
-          debug(functionName, "Invalid mode of operation specified, aborting", runMode);
-          break;
+        // Check the desired run mode
+        getIntegerParam(SPECSRunMode_, &runMode);
+        // Define the spectrum according to the run mode
+        switch(runMode){
+          case SPECS_RUN_FAT:
+            // Define the fixed analyser transmission spectrum
+            status = defineSpectrumFAT();
+            break;
+          case SPECS_RUN_SFAT:
+            // Define the snapshot fixed analyser transmission spectrum
+            status = defineSpectrumSFAT();
+            break;
+          case SPECS_RUN_FRR:
+            // Define the fixed retarding ratio spectrum
+            status = defineSpectrumFRR();
+            break;
+          case SPECS_RUN_FE:
+            // Define the fixed energy spectrum
+            status = defineSpectrumFE();
+            break;
+          default:
+            // This is bad news, invalid mode of operation abort the scan
+            debug(functionName, "Invalid mode of operation specified, aborting", runMode);
+            break;
+        }
       }
 
       // Now Validate the spectrum
-      validateSpectrum();
+      if (status == asynSuccess){
+        status = validateSpectrum();
+      }
 
-      // Read out the number of energy channels (samples)
-      getIntegerParam(SPECSSamplesIteration_, &energyChannels);
-      // Set the total number of samples for all of the iterations
-      setIntegerParam(SPECSSamples_, (energyChannels*iterations));
-
-      // If the mode is snapshot then we need to calculate the number of energy channels
-      if (runMode == SPECS_RUN_SFAT){
-        double start, end, width;
-        getDoubleParam(SPECSStartEnergy_, &start);
-        getDoubleParam(SPECSEndEnergy_, &end);
-        getDoubleParam(SPECSStepWidth_, &width);
-
-        // The number of channels is simply (end-start)/width + 1
-        energyChannels = (int)floor(((end-start)/width)+0.5) + 1;
-        setIntegerParam(SPECSSamplesIteration_, energyChannels);
+      if (status == asynSuccess){
+        // Read out the number of energy channels (samples)
+        getIntegerParam(SPECSSamplesIteration_, &energyChannels);
+        // Set the total number of samples for all of the iterations
         setIntegerParam(SPECSSamples_, (energyChannels*iterations));
-      }
 
-      // Free the image buffer if it has already been allocated
-      if (image){
-        free(image);
+        // If the mode is snapshot then we need to calculate the number of energy channels
+        if (runMode == SPECS_RUN_SFAT){
+          double start, end, width;
+          getDoubleParam(SPECSStartEnergy_, &start);
+          getDoubleParam(SPECSEndEnergy_, &end);
+          getDoubleParam(SPECSStepWidth_, &width);
+
+          // The number of channels is simply (end-start)/width + 1
+          energyChannels = (int)floor(((end-start)/width)+0.5) + 1;
+          setIntegerParam(SPECSSamplesIteration_, energyChannels);
+          setIntegerParam(SPECSSamples_, (energyChannels*iterations));
+        }
+
+        // Free the image buffer if it has already been allocated
+        if (image){
+          free(image);
+        }
+        // Free the spectrum buffer if it has already been allocated
+        if (spectrum){
+          free(spectrum);
+        }
+        // Allocate the required memory to store the image
+        image = (double *)malloc(nonEnergyChannels * energyChannels * sizeof(epicsFloat64));
+        // Allocate the required memory to store the spectrum
+        spectrum = (double *)malloc(energyChannels * sizeof(epicsFloat64));
+        // Set the size parameters
+        setIntegerParam(NDArraySizeX, energyChannels);
+        dims[0] = energyChannels;
+        setIntegerParam(NDArraySizeY, nonEnergyChannels);
+        dims[1] = nonEnergyChannels;
+        nbytes = (dims[0] * dims[1]) * sizeof(double);
+        setIntegerParam(NDArraySize, nbytes);
+        callParamCallbacks();
+        // Get data type
+        getIntegerParam(NDDataType, (int *) &dataType);
       }
-      // Free the spectrum buffer if it has already been allocated
-      if (spectrum){
-        free(spectrum);
-      }
-      // Allocate the required memory to store the image
-      image = (double *)malloc(nonEnergyChannels * energyChannels * sizeof(epicsFloat64));
-      // Allocate the required memory to store the spectrum
-      spectrum = (double *)malloc(energyChannels * sizeof(epicsFloat64));
-      // Set the size parameters
-      setIntegerParam(NDArraySizeX, energyChannels);
-      dims[0] = energyChannels;
-      setIntegerParam(NDArraySizeY, nonEnergyChannels);
-      dims[1] = nonEnergyChannels;
-      nbytes = (dims[0] * dims[1]) * sizeof(double);
-      setIntegerParam(NDArraySize, nbytes);
-      callParamCallbacks();
-      // Get data type
-      getIntegerParam(NDDataType, (int *) &dataType);
     }
 
-    // Initialise the image data points
-    for (int x = 0; x < energyChannels*nonEnergyChannels; x++){
-      image[x] = 0.0;
-    }
-    // Initialise the spectrum data points
-    for (int x = 0; x < energyChannels; x++){
-      spectrum[x] = 0.0;
-    }
+    // Check here for any bad status, if there is a problem abort the acquisition
+    if (status != asynSuccess){
+      acquire = 0;
+      setIntegerParam(ADAcquire, acquire);
+    } else {
+      // No problems, continue with the acquisition
 
-    // Allocate NDArray memory
-    pImage = this->pNDArrayPool->alloc(2, dims, dataType, 0, NULL);
+      // Initialise the image data points
+      for (int x = 0; x < energyChannels*nonEnergyChannels; x++){
+        image[x] = 0.0;
+      }
+      // Initialise the spectrum data points
+      for (int x = 0; x < energyChannels; x++){
+        spectrum[x] = 0.0;
+      }
 
-    // Reset the percent complete and current sample
-    setIntegerParam(SPECSPercentCompleteIteration_, 0);
-    setIntegerParam(SPECSCurrentSampleIteration_,   0);
-    setIntegerParam(SPECSPercentComplete_,          0);
-    setIntegerParam(SPECSCurrentSample_,            0);
+      // Allocate NDArray memory
+      pImage = this->pNDArrayPool->alloc(2, dims, dataType, 0, NULL);
 
-    // We are acquiring.
-    debug(functionName, "We are acquiring");
+      // Reset the percent complete and current sample
+      setIntegerParam(SPECSPercentCompleteIteration_, 0);
+      setIntegerParam(SPECSCurrentSampleIteration_,   0);
+      setIntegerParam(SPECSPercentComplete_,          0);
+      setIntegerParam(SPECSCurrentSample_,            0);
 
-    epicsTimeGetCurrent(&startTime);
+      // We are acquiring.
+      debug(functionName, "We are acquiring");
 
-    // Get the exposure parameters
-    getDoubleParam(ADAcquireTime, &acquireTime);
-    getDoubleParam(ADAcquirePeriod, &acquirePeriod);
+      epicsTimeGetCurrent(&startTime);
 
-    // Get the acquisition parameters
-    getIntegerParam(ADNumImages, &numImages);
-    getIntegerParam(ADImageMode, &imageMode);
+      // Get the exposure parameters
+      getDoubleParam(ADAcquireTime, &acquireTime);
+      getDoubleParam(ADAcquirePeriod, &acquirePeriod);
 
-    // Set the status and message to notify user we are acquiring
-    setIntegerParam(ADStatus, ADStatusAcquire);
-    setStringParam(ADStatusMessage, "Acquiring data...");
+      // Get the acquisition parameters
+      getIntegerParam(ADNumImages, &numImages);
+      getIntegerParam(ADImageMode, &imageMode);
 
-    // Loop over the number of exposures (iterations)
-    int iteration = 0;
-    while((iteration < iterations) && (acquire == 1)){
-      // Clear any stale data from previous acquisitions
-      sendSimpleCommand(SPECS_CMD_CLEAR);
-      // Send the start command
-      sendSimpleCommand(SPECS_CMD_START);
+      // Set the status and message to notify user we are acquiring
+      setIntegerParam(ADStatus, ADStatusAcquire);
+      setStringParam(ADStatusMessage, "Acquiring data...");
 
-      std::vector<double> values;
-      currentDataPoint = 0;
-      numDataPoints = 0;
-      sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
-      pNDImage = (double *)(pImage->pData);
-      while (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted")) || (numDataPoints != currentDataPoint)){
-        this->unlock();
-        epicsThreadSleep(SPECS_UPDATE_RATE);
-        this->lock();
+      // Loop over the number of exposures (iterations)
+      int iteration = 0;
+      while((iteration < iterations) && (acquire == 1)){
+        // Clear any stale data from previous acquisitions
+        sendSimpleCommand(SPECS_CMD_CLEAR);
+        // Send the start command
+        sendSimpleCommand(SPECS_CMD_START);
 
+        std::vector<double> values;
+        currentDataPoint = 0;
+        numDataPoints = 0;
         sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
-        debug(functionName, "Status", data);
-
-        // Check the number of available data points, and retrieve any that are not already in memory
-        readIntegerData(data, "NumberOfAcquiredPoints", numDataPoints);
-
-        if (numDataPoints > currentDataPoint){
-          // If numDataPoints is greater than currentDataPoint then request the extra points
-          readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
-
-          // Loop over the vector of newly acquired points and store in the correct image location
-          int index = 0;
-          debug(functionName, "Number of samples read", (numDataPoints-currentDataPoint));
- 
-          for (int y = 0; y < nonEnergyChannels; y++){
-            for (int x = currentDataPoint; x < numDataPoints; x++){
-              // If this is the first iteration set the image values, otherwise add them to the current values
-              if (iteration == 0){
-                pNDImage[(y * energyChannels) + x] = values[index];
-                image[(y * energyChannels) + x] = values[index];
-              } else {
-                pNDImage[(y * energyChannels) + x] += values[index];
-                image[(y * energyChannels) + x] += values[index];
-              }
-              // Integrate for the spectrum
-              spectrum[x] += values[index];
-              index++;
-            }
-          }
-          // Set the current point equal to the number of data points retrieved so far
-          currentDataPoint = numDataPoints;
-
-          // Notify listeners of the update to the spectrum data
-          if (iteration == 0){
-            doCallbacksFloat64Array(spectrum, currentDataPoint, SPECSAcqSpectrum_, 0);
-          } else {
-            // After the first iteration the spectrum is already full og data, so always post the full array
-            doCallbacksFloat64Array(spectrum, energyChannels, SPECSAcqSpectrum_, 0);
-          }
-          // Notify listeners of the update to the image data
-          doCallbacksFloat64Array(image, (energyChannels*nonEnergyChannels), SPECSAcqImage_, 0);
-        
-          // Set the percent complete and current sample number
-          setIntegerParam(SPECSPercentCompleteIteration_, (int)(((currentDataPoint)*100)/energyChannels));
-          setIntegerParam(SPECSPercentComplete_, (int)(((currentDataPoint+(iteration*energyChannels))*100)/(iterations*energyChannels)));
-          setIntegerParam(SPECSCurrentSampleIteration_,   currentDataPoint);
-          setIntegerParam(SPECSCurrentSample_,   currentDataPoint + (iteration*energyChannels));
-          // Calculate the remaining time
-          double dvalue = 0.0;
-          getDoubleParam(ADAcquireTime, &dvalue);
-          double time = (double)(energyChannels - (currentDataPoint)) * dvalue;
-          setDoubleParam(SPECSRemainingTimeIteration_, time);
-          double totalTime = (double)(energyChannels - currentDataPoint + ((iterations-(iteration+1)) * energyChannels)) * dvalue;
-          setDoubleParam(SPECSRemainingTime_, totalTime);
-
+        pNDImage = (double *)(pImage->pData);
+        while (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted")) || (numDataPoints != currentDataPoint)){
           this->unlock();
+          epicsThreadSleep(SPECS_UPDATE_RATE);
+          this->lock();
+
+          sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
+          debug(functionName, "Status", data);
+
+          // Check the number of available data points, and retrieve any that are not already in memory
+          readIntegerData(data, "NumberOfAcquiredPoints", numDataPoints);
+
+          if (numDataPoints > currentDataPoint){
+            // If numDataPoints is greater than currentDataPoint then request the extra points
+            readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
+
+            // Loop over the vector of newly acquired points and store in the correct image location
+            int index = 0;
+            debug(functionName, "Number of samples read", (numDataPoints-currentDataPoint));
+ 
+            for (int y = 0; y < nonEnergyChannels; y++){
+              for (int x = currentDataPoint; x < numDataPoints; x++){
+                // If this is the first iteration set the image values, otherwise add them to the current values
+                if (iteration == 0){
+                  pNDImage[(y * energyChannels) + x] = values[index];
+                  image[(y * energyChannels) + x] = values[index];
+                } else {
+                  pNDImage[(y * energyChannels) + x] += values[index];
+                  image[(y * energyChannels) + x] += values[index];
+                }
+                // Integrate for the spectrum
+                spectrum[x] += values[index];
+                index++;
+              }
+            }
+            // Set the current point equal to the number of data points retrieved so far
+            currentDataPoint = numDataPoints;
+
+            // Notify listeners of the update to the spectrum data
+            if (iteration == 0){
+              doCallbacksFloat64Array(spectrum, currentDataPoint, SPECSAcqSpectrum_, 0);
+            } else {
+              // After the first iteration the spectrum is already full og data, so always post the full array
+              doCallbacksFloat64Array(spectrum, energyChannels, SPECSAcqSpectrum_, 0);
+            }
+            // Notify listeners of the update to the image data
+            doCallbacksFloat64Array(image, (energyChannels*nonEnergyChannels), SPECSAcqImage_, 0);
+        
+            // Set the percent complete and current sample number
+            setIntegerParam(SPECSPercentCompleteIteration_, (int)(((currentDataPoint)*100)/energyChannels));
+            setIntegerParam(SPECSPercentComplete_, (int)(((currentDataPoint+(iteration*energyChannels))*100)/(iterations*energyChannels)));
+            setIntegerParam(SPECSCurrentSampleIteration_,   currentDataPoint);
+            setIntegerParam(SPECSCurrentSample_,   currentDataPoint + (iteration*energyChannels));
+            // Calculate the remaining time
+            double dvalue = 0.0;
+            getDoubleParam(ADAcquireTime, &dvalue);
+            double time = (double)(energyChannels - (currentDataPoint)) * dvalue;
+            setDoubleParam(SPECSRemainingTimeIteration_, time);
+            double totalTime = (double)(energyChannels - currentDataPoint + ((iterations-(iteration+1)) * energyChannels)) * dvalue;
+            setDoubleParam(SPECSRemainingTime_, totalTime);
+
+            this->unlock();
+            callParamCallbacks();
+            this->lock();
+          }
+        }
+        // Check the acquisition status
+        getIntegerParam(ADAcquire, &acquire);
+        // Increase the iteration
+        iteration++;
+        // End of the iteration loop
+      }
+
+
+      pImage->dims[0].size = dims[0];
+      pImage->dims[1].size = dims[1];
+
+      // Set a bit of areadetector image/frame statistics...
+      getIntegerParam(ADNumImages, &numImages);
+      getIntegerParam(ADImageMode, &imageMode);
+      getIntegerParam(NDArrayCallbacks, &arrayCallbacks);
+      getIntegerParam(NDArrayCounter, &imageCounter);
+      getIntegerParam(ADNumImagesCounter, &numImagesCounter);
+      imageCounter++;
+      numImagesCounter++;
+      setIntegerParam(NDArrayCounter, imageCounter);
+      setIntegerParam(ADNumImagesCounter, numImagesCounter);
+
+      pImage->uniqueId = imageCounter;
+      pImage->timeStamp = startTime.secPastEpoch + startTime.nsec / 1.e9;
+
+      // Get any attributes that have been defined for this driver
+      this->getAttributes(pImage->pAttributeList);
+
+      if (arrayCallbacks){
+        // Must release the lock here, or we can get into a deadlock, because we can
+        // block on the plugin lock, and the plugin can be calling us
+        this->unlock();
+        debug(functionName, "Calling NDArray callback");
+        doCallbacksGenericPointer(pImage, NDArrayData, 0);
+        this->lock();
+      }
+
+      // Free the image buffer
+      pImage->release();
+
+      // Check to see if acquisition is complete
+      if ((imageMode == ADImageSingle) || ((imageMode == ADImageMultiple) && (numImagesCounter >= numImages))){
+        setIntegerParam(ADAcquire, 0);
+        debug(functionName, "Acquisition completed");
+      }
+      // Call the callbacks to update any changes
+      callParamCallbacks();
+      getIntegerParam(ADAcquire, &acquire);
+
+      // If we are acquiring then sleep for the acquire period minus elapsed time.
+      if (acquire){
+        epicsTimeGetCurrent(&endTime);
+        elapsedTime = epicsTimeDiffInSeconds(&endTime, &startTime);
+        delay = acquirePeriod - elapsedTime;
+        if (delay >= 0.0){
+          debug(functionName, "Delay", delay);
+          // We set the status to indicate we are in the period delay
+          setIntegerParam(ADStatus, ADStatusWaiting);
           callParamCallbacks();
+          this->unlock();
+          status = epicsEventWaitWithTimeout(this->stopEventId_, delay);
           this->lock();
         }
-      }
-      // Check the acquisition status
-      getIntegerParam(ADAcquire, &acquire);
-      // Increase the iteration
-      iteration++;
-      // End of the iteration loop
-    }
-
-
-    pImage->dims[0].size = dims[0];
-    pImage->dims[1].size = dims[1];
-
-    // Set a bit of areadetector image/frame statistics...
-    getIntegerParam(ADNumImages, &numImages);
-    getIntegerParam(ADImageMode, &imageMode);
-    getIntegerParam(NDArrayCallbacks, &arrayCallbacks);
-    getIntegerParam(NDArrayCounter, &imageCounter);
-    getIntegerParam(ADNumImagesCounter, &numImagesCounter);
-    imageCounter++;
-    numImagesCounter++;
-    setIntegerParam(NDArrayCounter, imageCounter);
-    setIntegerParam(ADNumImagesCounter, numImagesCounter);
-
-    pImage->uniqueId = imageCounter;
-    pImage->timeStamp = startTime.secPastEpoch + startTime.nsec / 1.e9;
-
-    // Get any attributes that have been defined for this driver
-    this->getAttributes(pImage->pAttributeList);
-
-    if (arrayCallbacks){
-      // Must release the lock here, or we can get into a deadlock, because we can
-      // block on the plugin lock, and the plugin can be calling us
-      this->unlock();
-      debug(functionName, "Calling NDArray callback");
-      doCallbacksGenericPointer(pImage, NDArrayData, 0);
-      this->lock();
-    }
-
-    // Free the image buffer
-    pImage->release();
-
-    // Check to see if acquisition is complete
-    if ((imageMode == ADImageSingle) || ((imageMode == ADImageMultiple) && (numImagesCounter >= numImages))){
-      setIntegerParam(ADAcquire, 0);
-      debug(functionName, "Acquisition completed");
-    }
-    // Call the callbacks to update any changes
-    callParamCallbacks();
-    getIntegerParam(ADAcquire, &acquire);
-
-    // If we are acquiring then sleep for the acquire period minus elapsed time.
-    if (acquire){
-      epicsTimeGetCurrent(&endTime);
-      elapsedTime = epicsTimeDiffInSeconds(&endTime, &startTime);
-      delay = acquirePeriod - elapsedTime;
-      if (delay >= 0.0){
-        debug(functionName, "Delay", delay);
-        // We set the status to indicate we are in the period delay
-        setIntegerParam(ADStatus, ADStatusWaiting);
-        callParamCallbacks();
-        this->unlock();
-        status = epicsEventWaitWithTimeout(this->stopEventId_, delay);
-        this->lock();
       }
     }
   }
@@ -596,6 +638,14 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
       epicsEventSignal(this->stopEventId_);
       // Sent the message to the analyser to stop
       sendSimpleCommand(SPECS_CMD_ABORT);
+    }
+  } else if (function == SPECSConnect_){
+    int connected = 0;
+    // Get the connected status
+    getIntegerParam(SPECSConnected_, &connected);
+    // Only proceed if we are not connected
+    if (connected == 0){
+      status = connect();
     }
   } else if (function == SPECSDefine_){
     // A new definition is requested so check the value of the mode and send the required command
@@ -921,6 +971,33 @@ asynStatus SpecsAnalyser::defineSpectrumFRR()
   double dvalue = 0.0;
   int ivalue = 0;
   
+  // Construct the correct command string format
+  command << SPECS_CMD_DEFINE_FRR << " ";
+  // Add the StartEnergy
+  getDoubleParam(SPECSStartEnergy_ , &dvalue);
+  command << "StartEnergy:" << dvalue << " ";
+  // Add the EndEnergy
+  getDoubleParam(SPECSEndEnergy_ , &dvalue);
+  command << "EndEnergy:" << dvalue << " ";
+  // Add the StepWidth
+  getDoubleParam(SPECSStepWidth_ , &dvalue);
+  command << "StepWidth:" << dvalue << " ";
+  // Add the DwellTime
+  getDoubleParam(ADAcquireTime , &dvalue);
+  command << "DwellTime:" << dvalue << " ";
+  // Add the RetardingRatio
+  getDoubleParam(SPECSRetardingRatio_ , &dvalue);
+  command << "RetardingRatio:" << dvalue << " ";
+  // Add the LensMode
+  getIntegerParam(SPECSLensMode_ , &ivalue);
+  command << "LensMode:\"" << lensModes_[ivalue] << "\" ";
+  // Add the ScanRange
+  getIntegerParam(SPECSScanRange_ , &ivalue);
+  command << "ScanRange:\"" << scanRanges_[ivalue] << "\"";
+
+  debug(functionName, "Sending command", command.str());
+  // Send the command and get the reply
+  status = sendSimpleCommand(command.str(), &data);
   return status;
 }
 
@@ -935,6 +1012,30 @@ asynStatus SpecsAnalyser::defineSpectrumFE()
   double dvalue = 0.0;
   int ivalue = 0;
   
+  // Construct the correct command string format
+  command << SPECS_CMD_DEFINE_FE << " ";
+  // Add the KineticEnergy
+  getDoubleParam(SPECSKineticEnergy_ , &dvalue);
+  command << "KinEnergy:" << dvalue << " ";
+  // Add the Samples
+  getIntegerParam(SPECSSnapshotValues_ , &ivalue);
+  command << "Samples:" << ivalue << " ";
+  // Add the DwellTime
+  getDoubleParam(ADAcquireTime , &dvalue);
+  command << "DwellTime:" << dvalue << " ";
+  // Add the PassEnergy
+  getDoubleParam(SPECSPassEnergy_ , &dvalue);
+  command << "PassEnergy:" << dvalue << " ";
+  // Add the LensMode
+  getIntegerParam(SPECSLensMode_ , &ivalue);
+  command << "LensMode:\"" << lensModes_[ivalue] << "\" ";
+  // Add the ScanRange
+  getIntegerParam(SPECSScanRange_ , &ivalue);
+  command << "ScanRange:\"" << scanRanges_[ivalue] << "\"";
+
+  debug(functionName, "Sending command", command.str());
+  // Send the command and get the reply
+  status = sendSimpleCommand(command.str(), &data);
   return status;
 }
 
@@ -1397,6 +1498,22 @@ asynStatus SpecsAnalyser::asynPortConnect(const char *port, int addr, asynUser *
     cleanString(protocol, "\"");
     setStringParam(SPECSProtocolVersion_, protocol.c_str());
   }
+  return status;
+}
+
+asynStatus SpecsAnalyser::asynPortDisconnect(asynUser *pasynUser)
+{
+  static const char *functionName = "SpecsAnalyser::asynPortDisconnect";
+
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+
+  status = pasynOctetSyncIO->disconnect(pasynUser);
+  if (status) {
+    debug(functionName, "Unable to disconnect from asyn port");
+  }
+  // Record that we are not connected
+  setIntegerParam(SPECSConnected_, 0);
 
   return status;
 }
@@ -1507,6 +1624,10 @@ asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::strin
       while (replyString.substr(0, 1).find_first_of(" ") == std::string::npos){
         errorCode += replyString.substr(0, 1);
         replyString = replyString.substr(1);
+      }
+      if (errorCode == "3"){
+        // The error is that we are not connected, force full disconnect
+        disconnect();
       }
       data["Code"] = errorCode;
       // Clean any : and whitespace from the ends of the string

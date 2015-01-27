@@ -98,6 +98,23 @@ record(bo, "$(P)$(R)ReverseY")
   field(DISA, "1")
 }
 
+# Force a connection to establish
+record(longout, "$(P)$(R)CONNECT") 
+{
+  field(DESC, "Force a connection")
+  field(DTYP, "asynInt32")
+  field(OUT,  "@asyn($(PORT) 0)SPECS_CONNECT")
+}
+
+# Report back the connected state of the IOC
+record(longin, "$(P)$(R)CONNECTED_RBV") 
+{
+  field(DESC, "Current connected status")
+  field(DTYP, "asynInt32")
+  field(INP,  "@asyn($(PORT) 0)SPECS_CONNECTED")
+  field(SCAN, "I/O Intr")
+}
+
 # Report back current message counter
 record(longin, "$(P)$(R)COUNTER_RBV") 
 {

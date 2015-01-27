@@ -68,6 +68,7 @@
 #define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
 
 // Pre-defined EPICS Parameter Names
+#define SPECSConnectString                   "SPECS_CONNECT"
 #define SPECSConnectedString                 "SPECS_CONNECTED"
 #define SPECSPauseAcqString                  "SPECS_PAUSE_ACQ"
 #define SPECSMsgCounterString                "SPECS_MSG_COUNTER"
@@ -112,6 +113,8 @@ class SpecsAnalyser: public ADDriver
     SpecsAnalyser(const char *portName, const char *driverPort, int maxBuffers, size_t maxMemory, int priority, int stackSize);
     virtual ~SpecsAnalyser();
     void specsAnalyserTask();
+    asynStatus connect();
+    asynStatus disconnect();
     asynStatus readEnum(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn);
     asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
     asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
@@ -137,6 +140,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus readScanRanges();
     asynStatus readRunModes();
     asynStatus asynPortConnect(const char *port, int addr, asynUser **ppasynUser, const char *inputEos, const char *outputEos);
+    asynStatus asynPortDisconnect(asynUser *pasynUser);
     asynStatus commandResponse(const std::string &command, std::string &response, std::map<std::string, std::string> &data);
     asynStatus asynWriteRead(const char *command, char *response);
 
@@ -153,8 +157,9 @@ class SpecsAnalyser: public ADDriver
     asynStatus debug(const std::string& method, const std::string& msg, std::map<std::string, std::string> value);
 
   protected:
+    int SPECSConnect_;
+    #define FIRST_SPECS_PARAM SPECSConnect_
     int SPECSConnected_;
-    #define FIRST_SPECS_PARAM SPECSConnected_
     int SPECSPauseAcq_;
     int SPECSMsgCounter_;
     int SPECSServerName_;
@@ -188,6 +193,7 @@ class SpecsAnalyser: public ADDriver
 
   private:
     asynUser                           *portUser_;
+    char                               driverPort_[SPECS_MAX_STRING];
     std::map<std::string, int>         debugMap_;
     epicsEventId                       startEventId_;
     epicsEventId                       stopEventId_;
