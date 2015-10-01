@@ -417,7 +417,7 @@ void SpecsAnalyser::specsAnalyserTask()
         numDataPoints = 0;
         sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
         pNDImage = (double *)(pImage->pData);
-        while (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted")) || (numDataPoints != currentDataPoint)){
+        while (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint)){
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
           this->lock();
@@ -482,6 +482,13 @@ void SpecsAnalyser::specsAnalyserTask()
             this->lock();
           }
         }
+        if (data["ControllerState"] == "error"){
+          status = asynError;
+          setIntegerParam(ADAcquire, 0);
+          setIntegerParam(ADStatus, ADStatusError);
+          setStringParam(ADStatusMessage, "SPECS Controller Error, see log");
+        }
+
         // Check the acquisition status
         getIntegerParam(ADAcquire, &acquire);
         // Increase the iteration
@@ -522,28 +529,30 @@ void SpecsAnalyser::specsAnalyserTask()
       // Free the image buffer
       pImage->release();
 
-      // Check to see if acquisition is complete
-      if ((imageMode == ADImageSingle) || ((imageMode == ADImageMultiple) && (numImagesCounter >= numImages))){
-        setIntegerParam(ADAcquire, 0);
-        debug(functionName, "Acquisition completed");
-      }
-      // Call the callbacks to update any changes
-      callParamCallbacks();
-      getIntegerParam(ADAcquire, &acquire);
+      if (status != asynError){
+        // Check to see if acquisition is complete
+        if ((imageMode == ADImageSingle) || ((imageMode == ADImageMultiple) && (numImagesCounter >= numImages))){
+          setIntegerParam(ADAcquire, 0);
+          debug(functionName, "Acquisition completed");
+        }
+        // Call the callbacks to update any changes
+        callParamCallbacks();
+        getIntegerParam(ADAcquire, &acquire);
 
-      // If we are acquiring then sleep for the acquire period minus elapsed time.
-      if (acquire){
-        epicsTimeGetCurrent(&endTime);
-        elapsedTime = epicsTimeDiffInSeconds(&endTime, &startTime);
-        delay = acquirePeriod - elapsedTime;
-        if (delay >= 0.0){
-          debug(functionName, "Delay", delay);
-          // We set the status to indicate we are in the period delay
-          setIntegerParam(ADStatus, ADStatusWaiting);
-          callParamCallbacks();
-          this->unlock();
-          status = epicsEventWaitWithTimeout(this->stopEventId_, delay);
-          this->lock();
+        // If we are acquiring then sleep for the acquire period minus elapsed time.
+        if (acquire){
+          epicsTimeGetCurrent(&endTime);
+          elapsedTime = epicsTimeDiffInSeconds(&endTime, &startTime);
+          delay = acquirePeriod - elapsedTime;
+          if (delay >= 0.0){
+            debug(functionName, "Delay", delay);
+            // We set the status to indicate we are in the period delay
+            setIntegerParam(ADStatus, ADStatusWaiting);
+            callParamCallbacks();
+            this->unlock();
+            status = epicsEventWaitWithTimeout(this->stopEventId_, delay);
+            this->lock();
+          }
         }
       }
     }
@@ -1583,8 +1592,12 @@ asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::strin
           } else {
             // If we are inside a quote we only care about the end quote
             if (insideQuotes == 1){
-              if (cc == "\""){
-                insideQuotes = 0;
+              // Test check previous character for '\'
+              std::string tcc = replyString.substr(index-1, 1);
+              if (tcc != "\\"){
+                if (cc == "\""){
+                  insideQuotes = 0;
+                }
               }
             } else {
               // If we see a [ then we are in an array
