@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<components arch="linux-x86">
+	<EPICS_BASE.EpicsEnvSet key="EPICS_CA_MAX_ARRAY_BYTES" name="ENV.MAXBYTES" value="4000000"/>
+	<EPICS_BASE.dbpf name="DBPF.1" pv="TEST-SPECS-01:DataType" value="7"/>
+	<EPICS_BASE.dbpf name="DBPF.2" pv="TEST-SPECS-01:ImageMode" value="0"/>
+	<!--<asyn.AsynIP name="DRV.1" noAutoConnect="False" noProcessEos="True" port="172.23.76.160:7010 TCP" priority="0"/>-->
+	<asyn.AsynIP name="DRV.1" noProcessEos="True" port="172.23.243.135:7010 TCP" priority="0"/>
+	<specsAnalyser.SpecsAnalyser ADDR="0" P="TEST-SPECS-01:" PORT="CCD.CAM" R="" TIMEOUT="1"/>
+	<ffmpegServer.diagnosticPlugins CAM="CCD.CAM" P="TEST-SPECS-01" PORTPREFIX="CCD" name="CCD.PLUGINS"/>
+</components>

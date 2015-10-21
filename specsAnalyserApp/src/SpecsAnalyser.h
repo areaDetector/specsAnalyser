@@ -45,6 +45,7 @@
 #define SPECS_TYPE_DOUBLE  "double"
 #define SPECS_TYPE_INTEGER "integer"
 #define SPECS_TYPE_STRING  "string"
+#define SPECS_TYPE_BOOL    "bool"
 
 // SPECS Command Strings
 #define SPECS_CMD_CONNECT      "Connect"
@@ -104,7 +105,8 @@ typedef enum
 {
   SPECSTypeDouble,
   SPECSTypeInteger,
-  SPECSTypeString
+  SPECSTypeString,
+  SPECSTypeBool
 } SPECSValueType_t;
 
 class SpecsAnalyser: public ADDriver
@@ -131,6 +133,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus getAnalyserParameter(const std::string& name, int &value);
     asynStatus getAnalyserParameter(const std::string& name, double &value);
     asynStatus getAnalyserParameter(const std::string& name, std::string &value);
+    asynStatus getAnalyserParameter(const std::string& name, bool &value);
     asynStatus setAnalyserParameter(const std::string& name, int value);
     asynStatus setAnalyserParameter(const std::string& name, double value);
     asynStatus setAnalyserParameter(const std::string& name, std::string value);

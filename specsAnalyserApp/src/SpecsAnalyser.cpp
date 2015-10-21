@@ -1205,6 +1205,7 @@ asynStatus SpecsAnalyser::setupEPICSParameters()
     int ivalue = 0;
     double dvalue = 0.0;
     std::string svalue = "";
+    bool bvalue = false;
     for (iter = paramMap_.begin(); iter != paramMap_.end(); iter++){
       if (status == asynSuccess){
         status = getAnalyserParameterType(iter->second, valType);
@@ -1246,6 +1247,19 @@ asynStatus SpecsAnalyser::setupEPICSParameters()
               // Store the index to parameter name
               paramIndexes_[index] = iter->first;
               break;
+            case SPECSTypeBool:
+              debug(functionName, "Got here, ", status);
+              // Create an integer parameter
+              createParam(iter->first.c_str(), asynParamInt32, &index);
+              // Read the value and set it
+              status = getAnalyserParameter(iter->second, bvalue);
+              if (status == asynSuccess) {
+        	  debug(functionName, "Success");
+        	  setIntegerParam(index, bvalue);
+              }
+              // Store the index to parameter name
+              paramIndexes_[index] = iter->first;
+              break;
             default:
               // This is bad, all cases should have been covered
               // TODO: Raise this as an error, print debug
@@ -1275,7 +1289,8 @@ asynStatus SpecsAnalyser::getAnalyserParameterType(const std::string& name, SPEC
       type = SPECSTypeInteger;
     } else if (data["ValueType"] == SPECS_TYPE_STRING){
       type = SPECSTypeString;
-    }
+    } else if (data["ValueType"] == SPECS_TYPE_BOOL)
+      type = SPECSTypeBool;
   }
   return status;
 }
@@ -1328,6 +1343,28 @@ asynStatus SpecsAnalyser::getAnalyserParameter(const std::string& name, std::str
   if (status == asynSuccess){
     value = data["Value"];
     cleanString(value, "\"");
+  }
+  return status;
+}
+
+asynStatus SpecsAnalyser::getAnalyserParameter(const std::string& name, bool &value)
+{
+  const char * functionName = "SpecsAnalyser::getAnalyserParameter (bool)";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_GET_VALUE;
+
+  debug(functionName, "Parameter", name);
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\"", &data);
+  if (status == asynSuccess){
+      if (data["Value"] == "\"false\""){
+        value = true;
+      } else if (data["Value"] == "\"true\""){
+        value = false;
+      } else {
+	debug(functionName, "Invalid value returned for bool parameter: ", data["Value"]);
+	status = asynError;
+      }
   }
   return status;
 }
@@ -1424,7 +1461,7 @@ asynStatus SpecsAnalyser::readLensModes()
   //lensModes_.push_back("SmallArea2");
   //lensModes_.push_back("WideAngleMode");
 
-	return status;
+  return status;
 }
 
 asynStatus SpecsAnalyser::readScanRanges()
