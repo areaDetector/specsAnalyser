@@ -3,5 +3,7 @@
 # simulation from that same file
 IOCS := example example_sim example_controls
 
+IOCS := example example_sim example_dasc example_controls
+
 # These are the dirs that each IOC lives in
 IOC_DIRS := $(patsubst %, $(TOP)/iocs/%, $(IOCS))

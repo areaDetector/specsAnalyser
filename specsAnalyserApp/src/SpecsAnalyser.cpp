@@ -1450,13 +1450,13 @@ asynStatus SpecsAnalyser::readLensModes()
   // ******* TEMPORARY SET LENS MODE NAMES AND SCAN RANGE VALUES ********
   lensModes_.push_back("AngleResolvedMode22");
   //lensModes_.push_back("HighAngularDispersion");
-  //lensModes_.push_back("HighMagnification");
+  lensModes_.push_back("HighMagnification");
   //lensModes_.push_back("HighMagnification2");
-  //lensModes_.push_back("LargeArea");
+  lensModes_.push_back("LargeArea");
   //lensModes_.push_back("LowAngularDispersion");
   //lensModes_.push_back("MediumAngularDispersion");
-  //lensModes_.push_back("MediumArea");
-  //lensModes_.push_back("MediumMagnification");
+  lensModes_.push_back("MediumArea");
+  lensModes_.push_back("MediumMagnification");
   lensModes_.push_back("SmallArea");
   //lensModes_.push_back("SmallArea2");
   //lensModes_.push_back("WideAngleMode");
