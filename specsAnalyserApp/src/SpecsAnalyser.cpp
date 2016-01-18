@@ -870,6 +870,7 @@ asynStatus SpecsAnalyser::validateSpectrum()
       if (scanRanges_[index] == lookup){
         ivalue = index;
       }
+      index++;
     }
     setIntegerParam(SPECSScanRange_, ivalue);
     this->lock();

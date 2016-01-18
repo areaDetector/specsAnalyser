@@ -257,7 +257,7 @@ record(waveform, "$(P)$(R)INT_SPECTRUM")
   field(INP,  "@asyn($(PORT) 0)SPECS_ACQ_SPECTRUM")
   field(SCAN, "I/O Intr")
   field(FTVL, "DOUBLE")
-  field(NELM, "2000")
+  field(NELM, "100000")
 }
 
 # Acquired image of data
@@ -268,7 +268,7 @@ record(waveform, "$(P)$(R)IMAGE")
   field(INP,  "@asyn($(PORT) 0)SPECS_ACQ_IMAGE")
   field(SCAN, "I/O Intr")
   field(FTVL, "DOUBLE")
-  field(NELM, "4000")
+  field(NELM, "2000000")
 }
 
 # Report back the server name
