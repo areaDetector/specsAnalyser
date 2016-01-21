@@ -57,6 +57,9 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   static const char *functionName = "SpecsAnalyser::SpecsAnalyser";
   int status = 0;
 
+  // Setup flag to state this is our first connection
+  firstConnect_ = true;
+
   // Initialise the debugger
   initDebugger(1);
 
@@ -125,37 +128,6 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
 	setStringParam(ADManufacturer,                   "SPECS");
 
   if (status == asynSuccess){
-    status = connect();
-  }
-
-  // Read in the device name
-  if (status == asynSuccess){
-    status = readDeviceVisibleName();
-  }
-  
-  // Setup all of the available parameters obtained from the hardware
-  if (status == asynSuccess){
-    status = setupEPICSParameters();
-  }
-
-  // Read in the lists of enumerated types ready for use by records
-  if (status == asynSuccess){
-    // Read the number of non-energy channels (slices)
-    int nonEnergyChannels = 0;
-    getAnalyserParameter("NumNonEnergyChannels", nonEnergyChannels);
-    setIntegerParam(SPECSNonEnergyChannels_, nonEnergyChannels);
-    // Read in the lens modes
-    status |= readLensModes();
-    // Read in the scan ranges
-    status |= readScanRanges();
-    // Setup the run modes
-    status |= readRunModes();
-  }
-
-  if (status == asynSuccess){
-    // Publish any updates necessary
-    callParamCallbacks();
-
     debug(functionName, "Starting up polling task....");
     // Create the thread that runs the acquisition
     status = (epicsThreadCreate("SpecsAnalyserTask",
@@ -167,6 +139,25 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
       debug(functionName, "epicsTheadCreate failure for image task");
     }
   }
+
+  if (status == asynSuccess){
+    // Attempt connection
+    makeConnection();
+    // Failed connection is not terminal here
+    //if (status != asynSuccess){
+    //  setIntegerParam(ADStatus, ADStatusError);
+    //  setStringParam(ADStatusMessage, "Not connected to SPECS");
+    //  callParamCallbacks();
+    //  status = asynSuccess;
+    //}
+
+    // Read in the lens modes
+    status |= readLensModes();
+    // Read in the scan ranges
+    status |= readScanRanges();
+    // Setup the run modes
+    status |= readRunModes();
+  }
   
   // Check if the status is bad.  If it is do our best to set the status record and message
   if (status != asynSuccess){
@@ -174,6 +165,46 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
     setStringParam(ADStatusMessage, "FATAL: Failed to initialise - check IOC log");
     callParamCallbacks();
   }
+}
+
+asynStatus SpecsAnalyser::makeConnection()
+{
+  int status = asynSuccess;
+
+  status = connect();
+
+  if (status == asynSuccess){
+    if (firstConnect_ == true){
+      // This is our first connection attempt
+      // Read in the device name
+      if (status == asynSuccess){
+        status = readDeviceVisibleName();
+      }
+
+      // Setup all of the available parameters obtained from the hardware
+      if (status == asynSuccess){
+        status = setupEPICSParameters();
+      }
+
+      // Read in the lists of enumerated types ready for use by records
+      if (status == asynSuccess){
+        // Read the number of non-energy channels (slices)
+        int nonEnergyChannels = 0;
+        getAnalyserParameter("NumNonEnergyChannels", nonEnergyChannels);
+        setIntegerParam(SPECSNonEnergyChannels_, nonEnergyChannels);
+      }
+
+      // Publish any updates necessary
+      callParamCallbacks();
+
+      if (status == asynSuccess){
+        // First connection established, set flag
+        firstConnect_ = false;
+      }
+    }
+  }
+
+  return (asynStatus)status;
 }
 
 asynStatus SpecsAnalyser::connect()
@@ -187,10 +218,13 @@ asynStatus SpecsAnalyser::connect()
     debug(functionName, "Failed to connect to low level asynOctetSyncIO port", driverPort_);
     // Failure, set the connected status to 0
     setIntegerParam(SPECSConnected_,     0);
+    setIntegerParam(ADStatus, ADStatusError);
+    callParamCallbacks();
   } else {
     // Success, set the connected status to 1
     setIntegerParam(SPECSConnected_,     1);
     setStringParam(ADStatusMessage, "Connected to SPECS");
+    setIntegerParam(ADStatus, ADStatusIdle);
     callParamCallbacks();
   }
   return status;
@@ -200,11 +234,16 @@ asynStatus SpecsAnalyser::disconnect()
 {
   asynStatus status = asynSuccess;
   const char *functionName = "SpecsAnalyser::disconnect";
+  int connected = 0;
 
-  // Connect our Asyn user to the low level port that is a parameter to this constructor
-  status = asynPortDisconnect(portUser_);
-  if (status != asynSuccess){
-    debug(functionName, "Failed to disconnect to low level asynOctetSyncIO port", driverPort_);
+  getIntegerParam(SPECSConnected_, &connected);
+  // We can only force a disconnect if we are connected
+  if (connected == 1){
+    // Connect our Asyn user to the low level port that is a parameter to this constructor
+    status = asynPortDisconnect(portUser_);
+    if (status != asynSuccess){
+      debug(functionName, "Failed to disconnect to low level asynOctetSyncIO port", driverPort_);
+    }
   }
   return status;
 }
@@ -401,8 +440,8 @@ void SpecsAnalyser::specsAnalyserTask()
       getIntegerParam(ADImageMode, &imageMode);
 
       // Set the status and message to notify user we are acquiring
-      setIntegerParam(ADStatus, ADStatusAcquire);
-      setStringParam(ADStatusMessage, "Acquiring data...");
+      setIntegerParam(ADStatus, ADStatusInitializing);
+      setStringParam(ADStatusMessage, "Executing pre-scan...");
 
       // Loop over the number of exposures (iterations)
       int iteration = 0;
@@ -417,18 +456,23 @@ void SpecsAnalyser::specsAnalyserTask()
         numDataPoints = 0;
         sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
         pNDImage = (double *)(pImage->pData);
-        while (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint)){
+        while (status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
           this->lock();
 
-          sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
+          status = sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
+          if (data.count("Code") > 0){
+            data["ControllerState"] = "error";
+          }
           debug(functionName, "Status", data);
 
           // Check the number of available data points, and retrieve any that are not already in memory
           readIntegerData(data, "NumberOfAcquiredPoints", numDataPoints);
 
           if (numDataPoints > currentDataPoint){
+            setIntegerParam(ADStatus, ADStatusAcquire);
+            setStringParam(ADStatusMessage, "Acquiring data...");
             // If numDataPoints is greater than currentDataPoint then request the extra points
             readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
 
@@ -654,7 +698,7 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
     getIntegerParam(SPECSConnected_, &connected);
     // Only proceed if we are not connected
     if (connected == 0){
-      status = connect();
+      status = makeConnection();
     }
   } else if (function == SPECSDefine_){
     // A new definition is requested so check the value of the mode and send the required command
@@ -873,6 +917,20 @@ asynStatus SpecsAnalyser::validateSpectrum()
       index++;
     }
     setIntegerParam(SPECSScanRange_, ivalue);
+
+    // ***** WORKAROUND FOR FIXED ENERGY START AND END *******
+    int runMode = 0;
+    getIntegerParam(SPECSRunMode_, &runMode);
+    if (runMode == SPECS_RUN_FE){
+      double ke = 0.0;
+      double pe = 0.0;
+      getDoubleParam(SPECSKineticEnergy_ , &ke);
+      getDoubleParam(SPECSPassEnergy_, &pe);
+      setDoubleParam(SPECSStartEnergy_, ke-(0.1*pe));
+      setDoubleParam(SPECSEndEnergy_, ke+(0.1*pe));
+    }
+    // ***** END OF WORKAROUND *******
+
     this->lock();
     // Do callbacks so higher layers see any changes
     callParamCallbacks();
@@ -1767,6 +1825,8 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
         strcpy(response, replyString.substr(6).c_str());
       }
     }
+  } else {
+    status = asynError;
   }
 
   return status;

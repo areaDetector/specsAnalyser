@@ -115,6 +115,7 @@ class SpecsAnalyser: public ADDriver
     SpecsAnalyser(const char *portName, const char *driverPort, int maxBuffers, size_t maxMemory, int priority, int stackSize);
     virtual ~SpecsAnalyser();
     void specsAnalyserTask();
+    asynStatus makeConnection();
     asynStatus connect();
     asynStatus disconnect();
     asynStatus readEnum(asynUser *pasynUser, char *strings[], int values[], int severities[], size_t nElements, size_t *nIn);
@@ -205,6 +206,7 @@ class SpecsAnalyser: public ADDriver
     std::vector<std::string>           runModes_;
     std::map<std::string, std::string> paramMap_;
     std::map<int, std::string>         paramIndexes_;
+    bool                               firstConnect_;
 };
 
 // Number of asyn parameters (asyn commands) this driver supports
