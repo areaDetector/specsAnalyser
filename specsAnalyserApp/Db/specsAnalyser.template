@@ -107,12 +107,14 @@ record(longout, "$(P)$(R)CONNECT")
 }
 
 # Report back the connected state of the IOC
-record(longin, "$(P)$(R)CONNECTED_RBV") 
+record(bi, "$(P)$(R)CONNECTED_RBV") 
 {
   field(DESC, "Current connected status")
   field(DTYP, "asynInt32")
   field(INP,  "@asyn($(PORT) 0)SPECS_CONNECTED")
   field(SCAN, "I/O Intr")
+  field(ZNAM, "Not Connected")
+  field(ONAM, "Connected")
 }
 
 # Report back current message counter
