@@ -3,8 +3,8 @@ beginScreenProperties
 major 4
 minor 0
 release 1
-x 737
-y 127
+x 741
+y 179
 w 390
 h 820
 font "arial-bold-r-12.0"
@@ -85,9 +85,9 @@ major 4
 minor 0
 release 0
 x 185
-y 485
+y 535
 w 200
-h 135
+h 85
 lineColor index 14
 fill
 fillColor index 3
@@ -100,7 +100,7 @@ major 4
 minor 1
 release 1
 x 185
-y 475
+y 525
 w 53
 h 13
 font "arial-medium-r-12.0"
@@ -155,7 +155,7 @@ major 4
 minor 0
 release 0
 x 265
-y 545
+y 595
 w 115
 h 20
 fgColor index 25
@@ -175,7 +175,7 @@ major 4
 minor 1
 release 1
 x 190
-y 545
+y 595
 w 80
 h 20
 font "arial-bold-r-12.0"
@@ -194,7 +194,7 @@ major 4
 minor 1
 release 1
 x 190
-y 520
+y 570
 w 80
 h 20
 font "arial-bold-r-12.0"
@@ -213,7 +213,7 @@ major 4
 minor 0
 release 0
 x 265
-y 520
+y 570
 w 115
 h 20
 fgColor index 25
@@ -233,7 +233,7 @@ major 4
 minor 0
 release 0
 x 265
-y 495
+y 545
 w 115
 h 20
 fgColor index 25
@@ -253,7 +253,7 @@ major 4
 minor 1
 release 1
 x 190
-y 495
+y 545
 w 80
 h 20
 font "arial-bold-r-12.0"
@@ -399,24 +399,6 @@ value {
   "Slices"
 }
 autoSize
-endObjectProperties
-
-# (Textentry)
-object TextentryClass
-beginObjectProperties
-major 10
-minor 0
-release 0
-x 275
-y 645
-w 50
-h 20
-controlPv "$(P)$(R)SLICES"
-fgColor index 25
-fgAlarm
-bgColor index 3
-fill
-font "arial-bold-r-12.0"
 endObjectProperties
 
 # (Textupdate)
@@ -1468,5 +1450,103 @@ endGroup
 visPv "$(P)$(R)ACQ_MODE"
 visMin "2"
 visMax "3"
+endObjectProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 185
+y 485
+w 200
+h 35
+lineColor index 14
+fill
+fillColor index 3
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 185
+y 475
+w 79
+h 13
+font "arial-medium-r-12.0"
+fgColor index 14
+bgColor index 5
+value {
+  "  Connection   "
+}
+autoSize
+border
+endObjectProperties
+
+# (Textupdate)
+object TextupdateClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 270
+y 495
+w 110
+h 20
+controlPv "$(P)$(R)CONNECTED_RBV"
+fgColor index 16
+fgAlarm
+bgColor index 10
+fill
+font "arial-bold-r-12.0"
+fontAlign "center"
+endObjectProperties
+
+# (Group)
+object activeGroupClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 190
+y 495
+w 75
+h 20
+
+beginGroup
+
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 190
+y 495
+w 75
+h 20
+fgColor index 20
+onColor index 3
+offColor index 3
+topShadowColor index 1
+botShadowColor index 11
+controlPv "$(P)$(R)CONNECT"
+pressValue "1"
+releaseValue "1"
+onLabel "Reconnnect"
+offLabel "Reconnect"
+3d
+font "arial-bold-r-12.0"
+endObjectProperties
+
+endGroup
+
+visPv "$(P)$(R)CONNECTED_RBV"
+visMin "0"
+visMax "1"
 endObjectProperties
 
