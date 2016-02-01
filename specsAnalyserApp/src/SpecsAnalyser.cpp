@@ -481,6 +481,23 @@ void SpecsAnalyser::specsAnalyserTask()
             debug(functionName, "Number of samples read", (numDataPoints-currentDataPoint));
  
             for (int y = 0; y < nonEnergyChannels; y++){
+
+              // Quick and dirty fix to work around an issues with snapshot mode - if samples is set too high SPECS will misreport
+              // the end energy, causing us to allocate too small a buffer and overflow it. This clause should detect this case and
+              // abort before we overflow and crash.
+              // Note the data we get will be nonsense if iterations > 1.
+              // EW
+              if (numDataPoints > energyChannels) {
+        	  debug(functionName, "Data overflow: More data than number of allocated energyChannels received");
+        	      // Sent the message to the analyser to stop
+        	      sendSimpleCommand(SPECS_CMD_ABORT);
+        	      status = asynError;
+        	      setIntegerParam(ADAcquire, 0);
+        	      setIntegerParam(ADStatus, ADStatusError);
+        	      setStringParam(ADStatusMessage, "SPECS Controller Error, see log");
+        	      break;
+              }
+
               for (int x = currentDataPoint; x < numDataPoints; x++){
                 // If this is the first iteration set the image values, otherwise add them to the current values
                 if (iteration == 0){
@@ -1499,6 +1516,8 @@ asynStatus SpecsAnalyser::readDoubleData(std::map<std::string, std::string> data
   return status;
 }
 
+// ###TODO: This can now be done (as of SpecsLab 4.19) via GetSpectrumParamterInfo. Will need to
+// make sure we cope if we can't connect to the analyser at startup.
 asynStatus SpecsAnalyser::readLensModes()
 {
   const char * functionName = "SpecsAnalyser::readLensModes";
