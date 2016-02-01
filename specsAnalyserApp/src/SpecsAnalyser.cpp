@@ -142,7 +142,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
 
   if (status == asynSuccess){
     // Attempt connection
-    makeConnection();
+    status |= makeConnection();
     // Failed connection is not terminal here
     //if (status != asynSuccess){
     //  setIntegerParam(ADStatus, ADStatusError);
@@ -152,9 +152,9 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
     //}
 
     // Read in the lens modes
-    status |= readLensModes();
+    status |= readSpectrumParameter(SPECSLensMode_);
     // Read in the scan ranges
-    status |= readScanRanges();
+    status |= readSpectrumParameter(SPECSScanRange_);
     // Setup the run modes
     status |= readRunModes();
   }
@@ -162,7 +162,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   // Check if the status is bad.  If it is do our best to set the status record and message
   if (status != asynSuccess){
     setIntegerParam(ADStatus, ADStatusError);
-    setStringParam(ADStatusMessage, "FATAL: Failed to initialise - check IOC log");
+    setStringParam(ADStatusMessage, "Failed to initialise - check connection");
     callParamCallbacks();
   }
 }
@@ -685,7 +685,7 @@ asynStatus SpecsAnalyser::readEnum(asynUser *pasynUser, char *strings[], int val
 asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
 {
   const char *functionName = "SpecsAnalyser::writeInt32";
-  asynStatus status = asynSuccess;
+  int status = asynSuccess;
   int function = pasynUser->reason;
   int oldValue;
 
@@ -716,6 +716,15 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
     // Only proceed if we are not connected
     if (connected == 0){
       status = makeConnection();
+
+      // Read in the lens modes
+      status |= readSpectrumParameter(SPECSLensMode_);
+
+      // Read in the scan ranges
+      status |= readSpectrumParameter(SPECSScanRange_);
+
+      // Set up the run modes
+      status |= readRunModes();
     }
   } else if (function == SPECSDefine_){
     // A new definition is requested so check the value of the mode and send the required command
@@ -798,7 +807,7 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
     debug(functionName, "Function", function);
     debug(functionName, "Value", value);
   }
-  return status;
+  return (asynStatus)status;
 }
 
 /**
@@ -1516,46 +1525,81 @@ asynStatus SpecsAnalyser::readDoubleData(std::map<std::string, std::string> data
   return status;
 }
 
-// ###TODO: This can now be done (as of SpecsLab 4.19) via GetSpectrumParamterInfo. Will need to
-// make sure we cope if we can't connect to the analyser at startup.
-asynStatus SpecsAnalyser::readLensModes()
-{
-  const char * functionName = "SpecsAnalyser::readLensModes";
+asynStatus SpecsAnalyser::readSpectrumParameter(int param){
+  const char * functionName = "SpecsAnalyser::readSpectrumParameter";
   asynStatus status = asynSuccess;
 
-  debug(functionName, "Reading Lens Modes...");
+  std::vector<std::string>* store;
+  std::string paramName;
 
-  // ******* TEMPORARY SET LENS MODE NAMES AND SCAN RANGE VALUES ********
-  lensModes_.push_back("AngleResolvedMode22");
-  //lensModes_.push_back("HighAngularDispersion");
-  lensModes_.push_back("HighMagnification");
-  //lensModes_.push_back("HighMagnification2");
-  lensModes_.push_back("LargeArea");
-  //lensModes_.push_back("LowAngularDispersion");
-  //lensModes_.push_back("MediumAngularDispersion");
-  lensModes_.push_back("MediumArea");
-  lensModes_.push_back("MediumMagnification");
-  lensModes_.push_back("SmallArea");
-  //lensModes_.push_back("SmallArea2");
-  //lensModes_.push_back("WideAngleMode");
+  if (param == SPECSLensMode_) {
+      store = &lensModes_;
+      paramName = "\"LensMode\"";
+      debug(functionName, "Reading Lens Modes...");
+  } else if (param == SPECSScanRange_) {
+      store = &scanRanges_;
+      paramName = "\"ScanRange\"";
+      debug(functionName, "Reading Scan Ranges...");
+  } else {
+      debug(functionName, "Unrecognised spectrum parameter", param);
+      return asynError;
+  }
+
+  // Clear out any existing values
+  store->clear();
+
+  // Get the string containing the lens modes.
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_GET_SPECTRUM;
+  status = sendSimpleCommand(cmd + " ParameterName:" + paramName, &data);
+
+  if (status == asynSuccess) {
+      debug(functionName, "Got params:", data["Values"]);
+
+      if (data.find("Values") != data.end()) {
+	  std::stringstream stringStream(data["Values"]);
+	  std::string token;
+
+	  // Pull out the individual tokens and clean them up
+	  while(!stringStream.eof()) {
+	      std::getline(stringStream, token, ',');
+	      debug(functionName, token);
+	      // std::remove moves all instances of character to end of string and returns position of
+	      // first removed character in new string. erase then truncates the string at that point.
+	      token.erase(std::remove(token.begin(), token.end(), '\"'), token.end());
+	      token.erase(std::remove(token.begin(), token.end(), '['), token.end());
+	      token.erase(std::remove(token.begin(), token.end(), ']'), token.end());
+	      debug(functionName, token);
+	      store->push_back(token);
+	  }
+      } else {
+	  debug(functionName, "No values returned for param ", paramName);
+	  status = asynError;
+      }
+  }
+
+  // We need to make sure that enum field always contains at least one entry to avoid EDM problems
+  // caused by the SDEF field not being set in the mbbi/mbbo records.
+  if (status != asynSuccess) {
+      debug(functionName, "Failed to read ", paramName);
+      store->push_back("Not connected");
+  }
+
+  // Push the discovered changes back up to EPICS
+  // Do this regardless of the value of status
+  char *strings[store->size()];
+  int values[store->size()];
+  int severities[store->size()];
+  for (size_t index = 0; ((index < (size_t)store->size())); index++){
+    strings[index] = epicsStrDup((*store)[index].c_str());
+    debug(functionName, "Reading lens mode", strings[index]);
+    values[index] = index;
+    severities[index] = 0;
+  }
+  // Don't set status so as not to mask faults with the remote access (since this should always succeed)
+  this->doCallbacksEnum(strings, values, severities, (size_t)store->size(), param, 0);
 
   return status;
-}
-
-asynStatus SpecsAnalyser::readScanRanges()
-{
-  const char * functionName = "SpecsAnalyser::readScanRanges";
-  asynStatus status = asynSuccess;
-
-  debug(functionName, "Reading Scan Ranges...");
-
-  // ******* TEMPORARY SET LENS MODE NAMES AND SCAN RANGE VALUES ********
-  scanRanges_.push_back("3.5kV");
-  scanRanges_.push_back("1.5kV");
-  scanRanges_.push_back("400V");
-  scanRanges_.push_back("40V");
-
-	return status;
 }
 
 asynStatus SpecsAnalyser::readRunModes()
@@ -1888,8 +1932,7 @@ asynStatus SpecsAnalyser::initDebugger(int initDebug)
   debugMap_["SpecsAnalyser::getAnalyserParameter"]     = initDebug;
   debugMap_["SpecsAnalyser::readIntegerData"]          = initDebug;
   debugMap_["SpecsAnalyser::readDoubleData"]           = initDebug;
-  debugMap_["SpecsAnalyser::readLensModes"]            = initDebug;
-  debugMap_["SpecsAnalyser::readScanRanges"]           = initDebug;
+  debugMap_["SpecsAnalyser::readSpectrumParameter"]    = initDebug;
   debugMap_["SpecsAnalyser::readRunModes"]             = initDebug;
   debugMap_["SpecsAnalyser::asynPortConnect"]          = initDebug;
   debugMap_["SpecsAnalyser::commandResponse"]          = initDebug;
@@ -1917,8 +1960,7 @@ asynStatus SpecsAnalyser::debugLevel(const std::string& method, int onOff)
     debugMap_["SpecsAnalyser::getAnalyserParameter"]     = onOff;
     debugMap_["SpecsAnalyser::readIntegerData"]          = onOff;
     debugMap_["SpecsAnalyser::readDoubleData"]           = onOff;
-    debugMap_["SpecsAnalyser::readLensModes"]            = onOff;
-    debugMap_["SpecsAnalyser::readScanRanges"]           = onOff;
+    debugMap_["SpecsAnalyser::readSpectrumParameter"]    = onOff;
     debugMap_["SpecsAnalyser::readRunModes"]             = onOff;
     debugMap_["SpecsAnalyser::asynPortConnect"]          = onOff;
     debugMap_["SpecsAnalyser::commandResponse"]          = onOff;

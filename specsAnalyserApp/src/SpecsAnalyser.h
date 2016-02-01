@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@
 #include <errno.h>
 #include <locale>
 #include <map>
+#include <algorithm>
 
 // EPICS includes
 #include <epicsThread.h>
@@ -67,6 +69,7 @@
 #define SPECS_CMD_GET_VISNAME  "GetAnalyzerVisibleName"
 #define SPECS_CMD_GET_VALUE    "GetAnalyzerParameterValue"
 #define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
+#define SPECS_CMD_GET_SPECTRUM "GetSpectrumParameterInfo"
 
 // Pre-defined EPICS Parameter Names
 #define SPECSConnectString                   "SPECS_CONNECT"
@@ -140,8 +143,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus setAnalyserParameter(const std::string& name, std::string value);
     asynStatus readIntegerData(std::map<std::string, std::string> data, const std::string& name, int &value);
     asynStatus readDoubleData(std::map<std::string, std::string> data, const std::string& name, double &value);
-    asynStatus readLensModes();
-    asynStatus readScanRanges();
+    asynStatus readSpectrumParameter(int param);
     asynStatus readRunModes();
     asynStatus asynPortConnect(const char *port, int addr, asynUser **ppasynUser, const char *inputEos, const char *outputEos);
     asynStatus asynPortDisconnect(asynUser *pasynUser);
