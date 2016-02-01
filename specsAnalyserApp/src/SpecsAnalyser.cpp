@@ -473,6 +473,13 @@ void SpecsAnalyser::specsAnalyserTask()
           if (numDataPoints > currentDataPoint){
             setIntegerParam(ADStatus, ADStatusAcquire);
             setStringParam(ADStatusMessage, "Acquiring data...");
+
+            // ###TODO: Very dirty hack to work around a bug in SpecsLab 4.19 - first data point reports data ready before
+            // data has been acquired, so we'll get all zeros back if we read it immediately. Instead wait for the dwell
+            // time to elapse.
+            if (currentDataPoint == 0)
+              epicsThreadSleep(acquireTime + 1.0);
+
             // If numDataPoints is greater than currentDataPoint then request the extra points
             readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
 
