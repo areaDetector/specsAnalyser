@@ -70,6 +70,7 @@
 #define SPECS_CMD_GET_VALUE    "GetAnalyzerParameterValue"
 #define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
 #define SPECS_CMD_GET_SPECTRUM "GetSpectrumParameterInfo"
+#define SPECS_CMD_GET_DATA_INFO "GetSpectrumDataInfo"
 
 // Pre-defined EPICS Parameter Names
 #define SPECSConnectString                   "SPECS_CONNECT"
@@ -78,6 +79,8 @@
 #define SPECSMsgCounterString                "SPECS_MSG_COUNTER"
 #define SPECSServerNameString                "SPECS_SERVER_NAME"
 #define SPECSProtocolVersionString           "SPECS_PROTOCOL_VERSION"
+#define SPECSProtocolVersionMinorString      "SPECS_PROTOCOL_VER_MINOR"
+#define SPECSProtocolVersionMajorString      "SPECS_PROTOCOL_VER_MAJOR"
 #define SPECSStartEnergyString               "SPECS_START_ENERGY"
 #define SPECSEndEnergyString                 "SPECS_END_ENERGY"
 #define SPECSRetardingRatioString            "SPECS_RETARDING_RATIO"
@@ -102,7 +105,10 @@
 #define SPECSDefineString                    "SPECS_DEFINE"
 #define SPECSValidateString                  "SPECS_VALIDATE"
 
-#define SPECSNonEnergyChannelsString   "SPECS_NON_ENERGY_CHANNELS"
+#define SPECSNonEnergyChannelsString         "SPECS_NON_ENERGY_CHANNELS"
+#define SPECSNonEnergyUnitsString            "SPECS_NON_ENERGY_UNITS"
+#define SPECSNonEnergyMinString              "SPECS_NON_ENERGY_MIN"
+#define SPECSNonEnergyMaxString              "SPECS_NON_ENERGY_MAX"
 
 typedef enum
 {
@@ -111,6 +117,11 @@ typedef enum
   SPECSTypeString,
   SPECSTypeBool
 } SPECSValueType_t;
+
+typedef enum
+{
+  SPECSOrdinateRange
+} SPECSDataInfoParam_t;
 
 class SpecsAnalyser: public ADDriver
 {
@@ -145,6 +156,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus readDoubleData(std::map<std::string, std::string> data, const std::string& name, double &value);
     asynStatus readSpectrumParameter(int param);
     asynStatus readRunModes();
+    asynStatus readSpectrumDataInfo(SPECSDataInfoParam_t param);
     asynStatus asynPortConnect(const char *port, int addr, asynUser **ppasynUser, const char *inputEos, const char *outputEos);
     asynStatus asynPortDisconnect(asynUser *pasynUser);
     asynStatus commandResponse(const std::string &command, std::string &response, std::map<std::string, std::string> &data);
@@ -170,6 +182,8 @@ class SpecsAnalyser: public ADDriver
     int SPECSMsgCounter_;
     int SPECSServerName_;
     int SPECSProtocolVersion_;
+    int SPECSProtocolVersionMinor_;
+    int SPECSProtocolVersionMajor_;
     int SPECSStartEnergy_;
     int SPECSEndEnergy_;
     int SPECSRetardingRatio_;
@@ -195,7 +209,10 @@ class SpecsAnalyser: public ADDriver
     int SPECSValidate_;
 
     int SPECSNonEnergyChannels_;
-    #define LAST_SPECS_PARAM SPECSNonEnergyChannels_
+    int SPECSNonEnergyUnits_;
+    int SPECSNonEnergyMin_;
+    int SPECSNonEnergyMax_;
+    #define LAST_SPECS_PARAM SPECSNonEnergyMax_
 
   private:
     asynUser                           *portUser_;

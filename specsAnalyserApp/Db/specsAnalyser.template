@@ -300,6 +300,36 @@ record(longin, "$(P)$(R)SLICES_RBV")
   field(SCAN, "I/O Intr")
 }
 
+# Report back non-energy axis units
+record(stringin, "$(P)$(R)Y_UNITS_RBV")
+{
+  field(DESC, "Non-energy units RBV")
+  field(DTYP, "asynOctetRead")
+  field(INP,  "@asyn($(PORT) 0)SPECS_NON_ENERGY_UNITS")
+  field(SCAN, "I/O Intr")
+  field(VAL, "Unknown")
+}
+
+# Report back non-energy minimum range
+record(ai, "$(P)$(R)Y_MIN_RBV")
+{
+  field(DESC, "Non-energy minimum")
+  field(DTYP, "asynFloat64")
+  field(INP, "@asyn($(PORT) 0)SPECS_NON_ENERGY_MIN")
+  field(SCAN, "I/O Intr")
+  field(VAL, "0.0")
+}
+
+# Report back non-energy maximum range
+record(ai, "$(P)$(R)Y_MAX_RBV")
+{
+  field(DESC, "Non-energy maximum")
+  field(DTYP, "asynFloat64")
+  field(INP, "@asyn($(PORT) 0)SPECS_NON_ENERGY_MAX")
+  field(SCAN, "I/O Intr")
+  field(VAL, "0.0")
+}
+
 # Select lens mode
 record(mbbo, "$(P)$(R)LENS_MODE") 
 {

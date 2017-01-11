@@ -87,7 +87,9 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   createParam(SPECSPauseAcqString,                  asynParamInt32,         &SPECSPauseAcq_);
   createParam(SPECSMsgCounterString,                asynParamInt32,         &SPECSMsgCounter_);
   createParam(SPECSServerNameString,                asynParamOctet,         &SPECSServerName_);
-  createParam(SPECSProtocolVersionString,           asynParamOctet,         &SPECSProtocolVersion_);
+  createParam(SPECSProtocolVersionString,           asynParamInt32,         &SPECSProtocolVersion_);
+  createParam(SPECSProtocolVersionMinorString,      asynParamInt32,         &SPECSProtocolVersionMinor_);
+  createParam(SPECSProtocolVersionMajorString,      asynParamInt32,         &SPECSProtocolVersionMajor_);
   createParam(SPECSStartEnergyString,               asynParamFloat64,       &SPECSStartEnergy_);
   createParam(SPECSEndEnergyString,                 asynParamFloat64,       &SPECSEndEnergy_);
   createParam(SPECSRetardingRatioString,            asynParamFloat64,       &SPECSRetardingRatio_);
@@ -113,6 +115,9 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   createParam(SPECSValidateString,                  asynParamInt32,         &SPECSValidate_);
 
   createParam(SPECSNonEnergyChannelsString,         asynParamInt32,         &SPECSNonEnergyChannels_);
+  createParam(SPECSNonEnergyUnitsString,            asynParamOctet,         &SPECSNonEnergyUnits_);
+  createParam(SPECSNonEnergyMaxString,              asynParamFloat64,         &SPECSNonEnergyMax_);
+  createParam(SPECSNonEnergyMinString,              asynParamFloat64,         &SPECSNonEnergyMin_);
 
   // Initialise SPECS parameters
   setIntegerParam(SPECSConnected_,                 0);
@@ -456,10 +461,18 @@ void SpecsAnalyser::specsAnalyserTask()
         numDataPoints = 0;
         sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
         pNDImage = (double *)(pImage->pData);
+
+
+
         while (status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
           this->lock();
+
+          // Read out the non-energy axis metadata
+          if (status == asynSuccess){
+    	    status = readSpectrumDataInfo(SPECSOrdinateRange);
+          }
 
           status = sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
           if (data.count("Code") > 0){
@@ -486,7 +499,8 @@ void SpecsAnalyser::specsAnalyserTask()
             // Loop over the vector of newly acquired points and store in the correct image location
             int index = 0;
             debug(functionName, "Number of samples read", (numDataPoints-currentDataPoint));
- 
+            debug(functionName, "Received data points", (int)values.size());
+
             for (int y = 0; y < nonEnergyChannels; y++){
 
               // Quick and dirty fix to work around an issues with snapshot mode - if samples is set too high SPECS will misreport
@@ -1622,7 +1636,68 @@ asynStatus SpecsAnalyser::readRunModes()
   runModes_.push_back("Fixed Retarding Ratio");
   runModes_.push_back("Fixed Energy");
 
-	return status;
+  return status;
+}
+
+/**
+ * Send the GetSpectrumDataInfo method to query the spectrum metadata.
+ * Currently only OrdinateRange is supported, which gives us the units and min/max of the
+ * non-energy axis.
+ * This method is new in protocol version 1.11 so in earlier versions we expect to receive an error message.
+ *
+ * @param param - Data Info parameter to request. Currently (v1.11) only OrdinateRange is supported.
+ */
+asynStatus SpecsAnalyser::readSpectrumDataInfo(SPECSDataInfoParam_t param)
+{
+   static const char *functionName = "SpecsAnalyser::asynPortConnect";
+
+   asynStatus status = asynSuccess;
+   std::string parameterName;
+   std::map<std::string, std::string> data;
+   std::string cmd = SPECS_CMD_GET_DATA_INFO;
+
+   std::string unit;
+   double min, max;
+
+   switch(param) {
+     case SPECSOrdinateRange:
+       parameterName = "\"OrdinateRange\"";
+       break;
+
+     default:
+       debug(functionName, "Unknown parameter", param);
+       status = asynError;
+       break;
+
+   }
+
+   debug(functionName, "Reading Spectrum Data Info ", parameterName);
+
+   if (status == asynSuccess) {
+       status = sendSimpleCommand(cmd + " ParameterName:" + parameterName, &data);
+   }
+
+   if (status == asynSuccess) {
+       switch(param) {
+	 case SPECSOrdinateRange:
+	   unit = data["Unit"];
+	   cleanString(unit, "\"");
+	   setStringParam(SPECSNonEnergyUnits_, unit.c_str());
+	   if (readDoubleData(data, "Min", min) == asynSuccess)
+	     setDoubleParam(SPECSNonEnergyMin_, min);
+	   if (readDoubleData(data, "Max", max) == asynSuccess)
+	     setDoubleParam(SPECSNonEnergyMax_, max);
+	   break;
+
+	 default:
+	   debug(functionName, "Unknown parameter", param);
+	   status = asynError;
+	   break;
+
+       }
+   }
+   callParamCallbacks();
+   return status;
 }
 
 /**
@@ -1902,6 +1977,12 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
   return status;
 }
 
+/**
+ * Utility function, returns strings with unwanted characters stripped.
+ * @param str - string parameter, the string to clean up, returned by reference
+ * @param search - string parameter containing the set of characters to strip from str
+ * @param where - integer parameter to control where characters are stripped - 1 to strip from start, 2 to strip from end, 0 to do both.
+ */
 asynStatus SpecsAnalyser::cleanString(std::string &str, const std::string &search, int where)
 {
   if (where == 0 || where == 1){
@@ -1941,6 +2022,7 @@ asynStatus SpecsAnalyser::initDebugger(int initDebug)
   debugMap_["SpecsAnalyser::readDoubleData"]           = initDebug;
   debugMap_["SpecsAnalyser::readSpectrumParameter"]    = initDebug;
   debugMap_["SpecsAnalyser::readRunModes"]             = initDebug;
+  debugMap_["SpecsAnalyser::readSpectrumDataInfo"]     = initDebug;
   debugMap_["SpecsAnalyser::asynPortConnect"]          = initDebug;
   debugMap_["SpecsAnalyser::commandResponse"]          = initDebug;
   debugMap_["SpecsAnalyser::asynWriteRead"]            = initDebug;
@@ -1969,6 +2051,7 @@ asynStatus SpecsAnalyser::debugLevel(const std::string& method, int onOff)
     debugMap_["SpecsAnalyser::readDoubleData"]           = onOff;
     debugMap_["SpecsAnalyser::readSpectrumParameter"]    = onOff;
     debugMap_["SpecsAnalyser::readRunModes"]             = onOff;
+    debugMap_["SpecsAnalyser::readSpectrumDataInfo"]     = onOff;
     debugMap_["SpecsAnalyser::asynPortConnect"]          = onOff;
     debugMap_["SpecsAnalyser::commandResponse"]          = onOff;
     debugMap_["SpecsAnalyser::asynWriteRead"]            = onOff;
