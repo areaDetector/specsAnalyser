@@ -469,11 +469,6 @@ void SpecsAnalyser::specsAnalyserTask()
           epicsThreadSleep(SPECS_UPDATE_RATE);
           this->lock();
 
-          // Read out the non-energy axis metadata
-          if (status == asynSuccess){
-    	    status = readSpectrumDataInfo(SPECSOrdinateRange);
-          }
-
           status = sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
           if (data.count("Code") > 0){
             data["ControllerState"] = "error";
@@ -487,11 +482,12 @@ void SpecsAnalyser::specsAnalyserTask()
             setIntegerParam(ADStatus, ADStatusAcquire);
             setStringParam(ADStatusMessage, "Acquiring data...");
 
-            // ###TODO: Very dirty hack to work around a bug in SpecsLab 4.19 - first data point reports data ready before
-            // data has been acquired, so we'll get all zeros back if we read it immediately. Instead wait for the dwell
-            // time to elapse.
-            if (currentDataPoint == 0)
-              epicsThreadSleep(acquireTime + 1.0);
+            // On the first data point read out the ordinate range and units (not available until now).
+            if (currentDataPoint == 0) {
+              // Wait for the dwell time to elapse to guarantee data will be ready to read out.
+              epicsThreadSleep(acquireTime);
+              readSpectrumDataInfo(SPECSOrdinateRange);
+            }
 
             // If numDataPoints is greater than currentDataPoint then request the extra points
             readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
