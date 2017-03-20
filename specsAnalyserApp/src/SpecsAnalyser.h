@@ -160,7 +160,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus asynPortConnect(const char *port, int addr, asynUser **ppasynUser, const char *inputEos, const char *outputEos);
     asynStatus asynPortDisconnect(asynUser *pasynUser);
     asynStatus commandResponse(const std::string &command, std::string &response, std::map<std::string, std::string> &data);
-    asynStatus asynWriteRead(const char *command, char *response);
+    asynStatus asynWriteRead(const char *command, std::string &response);
 
     // String cleanup routines
     asynStatus cleanString(std::string &str, const std::string &search = ": \n", int where = 0);

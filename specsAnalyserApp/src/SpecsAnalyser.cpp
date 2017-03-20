@@ -369,6 +369,13 @@ void SpecsAnalyser::specsAnalyserTask()
         setIntegerParam(SPECSSamples_, (energyChannels*iterations));
 
         // If the mode is snapshot then we need to calculate the number of energy channels
+        /*
+         * Explanation - normally the Validate command will return the number of energy channels via the "Samples" field
+         * For Snapshot mode this field is instead used to report the number of frames that will be used to tile across the energy range - the actual
+         * number of energy channels is given by Samples * the number of energy channels per frame. This is given by the detector binning settings in
+         * SpecsLab which aren't currently exposed.
+         *
+         */
         if (runMode == SPECS_RUN_SFAT){
           double start, end, width;
           getDoubleParam(SPECSStartEnergy_, &start);
@@ -465,10 +472,11 @@ void SpecsAnalyser::specsAnalyserTask()
 
 
         while (status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
+          values.clear();
+
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
           this->lock();
-
           status = sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
           if (data.count("Code") > 0){
             data["ControllerState"] = "error";
@@ -490,7 +498,8 @@ void SpecsAnalyser::specsAnalyserTask()
             }
 
             // If numDataPoints is greater than currentDataPoint then request the extra points
-            readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
+            // Check size of returned values array
+            readAcquisitionData(currentDataPoint, numDataPoints-1, values);
 
             // Loop over the vector of newly acquired points and store in the correct image location
             int index = 0;
@@ -536,7 +545,7 @@ void SpecsAnalyser::specsAnalyserTask()
             if (iteration == 0){
               doCallbacksFloat64Array(spectrum, currentDataPoint, SPECSAcqSpectrum_, 0);
             } else {
-              // After the first iteration the spectrum is already full og data, so always post the full array
+              // After the first iteration the spectrum is already full of data, so always post the full array
               doCallbacksFloat64Array(spectrum, energyChannels, SPECSAcqSpectrum_, 0);
             }
             // Notify listeners of the update to the image data
@@ -1780,15 +1789,15 @@ asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::strin
   std::string errorCode = "";
   std::string replyString = "";
   std::string nameValueString = "";
-  char replyArray[SPECS_MAX_STRING];
+  std::string reply = "";
 
   debug(functionName, "Command to send", command);
-  status = asynWriteRead(command.c_str(), replyArray);
-  debug(functionName, "Response received", replyArray);
+  status = asynWriteRead(command.c_str(), reply);
+  debug(functionName, "Response received", reply);
   // Only continue if the status is good...
   if (status == asynSuccess){
     // OK we need to first find out if the command was accepted or not
-    replyString.assign(replyArray);
+    replyString.assign(reply);
     // Search for OK or ERROR at the beginning of the string
     if (replyString.substr(0, 2) == "OK"){
       response = "OK";
@@ -1897,7 +1906,7 @@ asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::strin
  * @param command - String command to send.
  * @param response - String response back.
  */
-asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
+asynStatus SpecsAnalyser::asynWriteRead(const char *command, std::string &response)
 {
   static const char *functionName = "SpecsAnalyser::asynWriteRead";
 
@@ -1908,6 +1917,7 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
   int connected = 0;
   char sendString[SPECS_MAX_STRING];
   char replyArray[SPECS_MAX_STRING];
+  std::string unprocessedString;
   int msgCounter;
    
   // Read the message counter, and increment it
@@ -1943,15 +1953,28 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
                                          replyArray, SPECS_MAX_STRING,
                                          SPECS_TIMEOUT,
                                          &nwrite, &nread, &eomReason );
+    debug(functionName, "nread", (int)nread);
+    debug(functionName, "EOM ", eomReason);
+    unprocessedString.append(replyArray, nread);
 
-    debug(functionName, "Raw response", replyArray);
+    // Large scans may well exceed our buffer size, so keep reading from the socket until no data remains
+    while (eomReason == ASYN_EOM_CNT && !status) {
+	status = pasynOctetSyncIO->read(portUser_, replyArray, SPECS_MAX_STRING, SPECS_TIMEOUT, &nread, &eomReason);
+	debug(functionName, "nread ", (int)nread);
+	debug(functionName, "EOM ", eomReason);
+
+	unprocessedString.append(replyArray, nread);
+    }
+
+    debug(functionName, "Raw String:", unprocessedString);
+
     // Extract out the response, message counter, and error code
-    if (!status && (replyArray[0] != '!')){
+    if (!status && (unprocessedString[0] != '!')){
       // Problem with response string.  Record the error and return error response
       status = asynError;
     }
     if (!status){
-      std::string replyString(replyArray);
+      std::string replyString(unprocessedString);
       int counter = 0;
       // Scan the 4 digits (1..5) for the message counter
       sscanf(replyString.substr(1,4).c_str(), "%04d", &counter);
@@ -1963,7 +1986,8 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
         status = asynError;
       } else {
         // Copy the response to the return string
-        strcpy(response, replyString.substr(6).c_str());
+	response = replyString.substr(6);
+        //strcpy(response, replyString.substr(6).c_str());
       }
     }
   } else {
