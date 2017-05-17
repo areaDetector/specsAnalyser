@@ -413,6 +413,7 @@ record(ao, "$(P)$(R)PASS_ENERGY")
   field(DESC, "Pass Energy")
   field(DTYP, "asynFloat64")
   field(OUT,  "@asyn($(PORT) 0)SPECS_PASS_ENERGY")
+  field(PREC, "3")
   field(PINI, "YES")
   field(VAL,  "10")  
 }
@@ -424,6 +425,7 @@ record(ai, "$(P)$(R)PASS_ENERGY_RBV")
   field(DTYP, "asynFloat64")
   field(SCAN, "I/O Intr")
   field(INP,  "@asyn($(PORT) 0)SPECS_PASS_ENERGY")
+  field(PREC, "3")
 }
 
 # User enters desired low energy value
