@@ -301,7 +301,10 @@ void SpecsAnalyser::specsAnalyserTask()
       if(!status){
         debug(functionName, "Waiting for the acquire command");
         setStringParam(ADStatusMessage, "Waiting for the acquire command");
-        setIntegerParam(ADStatus, ADStatusIdle);
+        int adstatus;
+        getIntegerParam(ADStatus, &adstatus);
+        if (adstatus != ADStatusAborted && adstatus != ADStatusError)
+          setIntegerParam(ADStatus, ADStatusIdle);
       }
       // Reset the counters
       setIntegerParam(ADNumExposuresCounter, 0);
@@ -384,15 +387,25 @@ void SpecsAnalyser::specsAnalyserTask()
         // Free the image buffer if it has already been allocated
         if (image){
           free(image);
+          image=0;
         }
         // Free the spectrum buffer if it has already been allocated
         if (spectrum){
           free(spectrum);
+          spectrum=0;
         }
+        debug(functionName, "Allocating buffers: nonEnergyChannels=", nonEnergyChannels);
+        debug(functionName, "Allocating buffers: energyChannels=", energyChannels);
+        debug(functionName, "Allocating buffers: image malloc ", int(nonEnergyChannels * energyChannels * sizeof(epicsFloat64)));
+        debug(functionName, "Allocating buffers: spectrum malloc ", int(energyChannels * sizeof(epicsFloat64)));
         // Allocate the required memory to store the image
         image = (double *)malloc(nonEnergyChannels * energyChannels * sizeof(epicsFloat64));
         // Allocate the required memory to store the spectrum
         spectrum = (double *)malloc(energyChannels * sizeof(epicsFloat64));
+        if (image==0 || spectrum==0) {
+          status=asynError;
+          debug(functionName, "Allocating buffers: malloc failed");
+        }
         // Set the size parameters
         setIntegerParam(NDArraySizeX, energyChannels);
         dims[0] = energyChannels;
@@ -410,6 +423,8 @@ void SpecsAnalyser::specsAnalyserTask()
     if (status != asynSuccess){
       acquire = 0;
       setIntegerParam(ADAcquire, acquire);
+      setIntegerParam(ADStatus, ADStatusError);
+      callParamCallbacks();
     } else {
       // No problems, continue with the acquisition
 
@@ -464,7 +479,8 @@ void SpecsAnalyser::specsAnalyserTask()
 
 
 
-        while (status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
+        while (acquire && status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
+          int readEndDataPoint;
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
           this->lock();
@@ -479,8 +495,10 @@ void SpecsAnalyser::specsAnalyserTask()
           readIntegerData(data, "NumberOfAcquiredPoints", numDataPoints);
 
           if (numDataPoints > currentDataPoint){
-            setIntegerParam(ADStatus, ADStatusAcquire);
-            setStringParam(ADStatusMessage, "Acquiring data...");
+            if (currentDataPoint==0) {
+              setIntegerParam(ADStatus, ADStatusAcquire);
+              setStringParam(ADStatusMessage, "Acquiring data...");
+            }
 
             // On the first data point read out the ordinate range and units (not available until now).
             if (currentDataPoint == 0) {
@@ -488,14 +506,31 @@ void SpecsAnalyser::specsAnalyserTask()
               epicsThreadSleep(acquireTime);
               readSpectrumDataInfo(SPECSOrdinateRange);
             }
-
-            // If numDataPoints is greater than currentDataPoint then request the extra points
-            readAcquisitionData(currentDataPoint, (numDataPoints-1), values);
+            
+            // Request the extra points but limit the size of the read request because very large transfers are slow.
+            // (Maybe due to page swapping/allocation for large stl maps and vectors?)
+            const int maxValues=100000;
+            readEndDataPoint=numDataPoints;
+            if ((readEndDataPoint-currentDataPoint)*nonEnergyChannels > maxValues) readEndDataPoint = currentDataPoint+(maxValues/nonEnergyChannels);
+            //values.reserve((readEndDataPoint-currentDataPoint)*nonEnergyChannels); // unfortunately this doesnt seem to help speed things up
+            readAcquisitionData(currentDataPoint, (readEndDataPoint-1), values);
 
             // Loop over the vector of newly acquired points and store in the correct image location
             int index = 0;
+            int numRxDataPoints=(int)values.size();
             debug(functionName, "Number of samples read", (numDataPoints-currentDataPoint));
             debug(functionName, "Received data points", (int)values.size());
+            if (numRxDataPoints < (readEndDataPoint-currentDataPoint)*nonEnergyChannels) {
+              // Not enough points in values[] array
+              debug(functionName, "**** Received too few data points ***");
+              //readEndDataPoint = numRxDataPoints/nonEnergyChannels + currentDataPoint;
+              sendSimpleCommand(SPECS_CMD_ABORT);
+              status = asynError;
+              setIntegerParam(ADAcquire, 0);
+              setIntegerParam(ADStatus, ADStatusError);
+              setStringParam(ADStatusMessage, "SPECS Receive Error, see log");
+              continue;
+            }
 
             for (int y = 0; y < nonEnergyChannels; y++){
 
@@ -505,17 +540,21 @@ void SpecsAnalyser::specsAnalyserTask()
               // Note the data we get will be nonsense if iterations > 1.
               // EW
               if (numDataPoints > energyChannels) {
-        	  debug(functionName, "Data overflow: More data than number of allocated energyChannels received");
-        	      // Sent the message to the analyser to stop
-        	      sendSimpleCommand(SPECS_CMD_ABORT);
-        	      status = asynError;
-        	      setIntegerParam(ADAcquire, 0);
-        	      setIntegerParam(ADStatus, ADStatusError);
-        	      setStringParam(ADStatusMessage, "SPECS Controller Error, see log");
-        	      break;
+                debug(functionName, "Data overflow: More data than number of allocated energyChannels received");
+                // Sent the message to the analyser to stop
+                sendSimpleCommand(SPECS_CMD_ABORT);
+                status = asynError;
+                setIntegerParam(ADAcquire, 0);
+                setIntegerParam(ADStatus, ADStatusError);
+                setStringParam(ADStatusMessage, "SPECS Controller Error(B), see log");
+                break;
               }
 
-              for (int x = currentDataPoint; x < numDataPoints; x++){
+              for (int x = currentDataPoint; x < readEndDataPoint; x++){
+                // Uncomment next 3 lines for (slow) debug print out of all data points
+                //char tmpMsg[300];               
+                //sprintf(tmpMsg, "index=%d image[%d,%d]=%lf", index,x,y,values[index]);
+                //debug(functionName,tmpMsg);
                 // If this is the first iteration set the image values, otherwise add them to the current values
                 if (iteration == 0){
                   pNDImage[(y * energyChannels) + x] = values[index];
@@ -530,7 +569,7 @@ void SpecsAnalyser::specsAnalyserTask()
               }
             }
             // Set the current point equal to the number of data points retrieved so far
-            currentDataPoint = numDataPoints;
+            currentDataPoint = readEndDataPoint;
 
             // Notify listeners of the update to the spectrum data
             if (iteration == 0){
@@ -559,12 +598,17 @@ void SpecsAnalyser::specsAnalyserTask()
             callParamCallbacks();
             this->lock();
           }
-        }
+          // Check the acquisition status (user may have pressed abort button)
+          getIntegerParam(ADAcquire, &acquire);
+        } //while
         if (data["ControllerState"] == "error"){
           status = asynError;
           setIntegerParam(ADAcquire, 0);
           setIntegerParam(ADStatus, ADStatusError);
-          setStringParam(ADStatusMessage, "SPECS Controller Error, see log");
+          if (data["Message"].size()>0)
+            setStringParam(ADStatusMessage, data["Message"].c_str());
+          else  
+            setStringParam(ADStatusMessage, "SPECS Controller Error, see log");
         }
 
         // Check the acquisition status
@@ -721,6 +765,7 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
     if (!value && (adstatus != ADStatusIdle)){
       // Reset the paused state
       setIntegerParam(SPECSPauseAcq_, 0);
+      setIntegerParam(ADStatus, ADStatusAborted);
       // Stop acquiring ( abort any hardware processings )
       epicsEventSignal(this->stopEventId_);
       // Sent the message to the analyser to stop
@@ -1174,17 +1219,18 @@ asynStatus SpecsAnalyser::readAcquisitionData(int startIndex, int endIndex, std:
     size_t loc = 0;
     double dval = 0.0;
     // Loop over the string searching for commas
-    while ((loc = dataString.find_first_of(",")) != std::string::npos){
+    // NB old std::stringstream code here was replaced with sscanf to increase loop speed
+    size_t pos = 0;
+    const char* str = dataString.c_str();
+    while ((loc = dataString.find_first_of(",",pos)) != std::string::npos){
       // At each occurrance of a comma, the text leading up to it is the value
-      std::stringstream dataItem(dataString.substr(0, loc));
-      dataItem >> dval;
+      sscanf(&str[pos], "%lf", &dval);
       values.push_back(dval);
       // Shorten the string by removing the processed item
-      dataString = dataString.substr(loc+1);
+      pos=loc+1;
     }
     // Don't forget the final data point
-    std::stringstream finalItem(dataString);
-    finalItem >> dval;
+    sscanf(&str[pos], "%lf", &dval);
     values.push_back(dval);
   }
   return status;
@@ -1795,75 +1841,95 @@ asynStatus SpecsAnalyser::commandResponse(const std::string &command, std::strin
       // Only parse the response if there is something to parse!
       if (replyString.length() > 3){
 
-      replyString = replyString.substr(2);
-      // Clean any : and whitespace from the ends of the string
-      cleanString(replyString);
-      // Now loop over the remainder of the string and search for name value pairs
-      // Create a small state machine for this
-      int         insideQuotes = 0;
-      int         nameCheck    = 1;
-      std::string name         = "";
-      int         valueCheck   = 0;
-      std::string value        = "";
-      int         arrayCheck   = 0;
-      for (unsigned int index = 0; index < replyString.length(); index++){
-        // Get the current character
-        std::string cc = replyString.substr(index, 1);
-        // Are we name checking or value checking
-        if (nameCheck == 1){
-          // Is the character a :
-          if (cc == ":"){
-            // We have the name, now start the value check
-            nameCheck = 0;
-            valueCheck = 1;
-          } else {
-            name += cc;
-          }
-        } else if (valueCheck == 1){
-          value += cc;
-          // If this is the last character then we must be at the end of this value
-          if (index == replyString.length()-1){
-            cleanString(name);
-            cleanString(value);
-            data[name] = value;
-          } else {
-            // If we are inside a quote we only care about the end quote
-            if (insideQuotes == 1){
-              // Test check previous character for '\'
-              std::string tcc = replyString.substr(index-1, 1);
-              if (tcc != "\\"){
-                if (cc == "\""){
-                  insideQuotes = 0;
-                }
-              }
+        replyString = replyString.substr(2);
+        // Clean any : and whitespace from the ends of the string
+        cleanString(replyString);
+        // Now loop over the remainder of the string and search for name value pairs
+        // Create a small state machine for this
+        int         insideQuotes = 0;
+        int         nameCheck    = 1;
+        std::string name         = "";
+        int         valueCheck   = 0;
+        std::string value        = "";
+        int         arrayCheck   = 0;
+        bool parsing = true;
+        while (parsing) {
+          for (unsigned int index = 0; index < replyString.length(); index++){
+            // Get the current character
+            std::string cc = replyString.substr(index, 1);
+            // Are we name checking or value checking
+             if (nameCheck == 1){
+               // Is the character a :
+               if (cc == ":"){
+                 // We have the name, now start the value check
+                 nameCheck = 0;
+                 valueCheck = 1;
+               } else {
+               name += cc;
+               } 
+             } else if (valueCheck == 1){
+               value += cc;
+               // If this is the last character then we must be at the end of this value
+               // If we are inside a quote we only care about the end quote
+               if (insideQuotes == 1){
+                 // Test check previous character for '\'
+                 std::string tcc = replyString.substr(index-1, 1);
+                 if (tcc != "\\"){
+                   if (cc == "\""){
+                     insideQuotes = 0;
+                   }
+                 }
+               } else {
+                 // If we see a [ then we are in an array
+                 if (cc == "["){
+                   arrayCheck = 1;
+                 // If we see a ] then we are exiting the array
+                 } else if (cc == "]"){
+                   arrayCheck = 0;
+                 // If we see a " then we are entering quotes
+                 } else if (cc == "\""){
+                   insideQuotes = 1;
+                 // If we see a ' ' then we might be at the end of the value
+                 } else if (cc == " "){
+                   // Check we are not inside quotes and not inside an array
+                   if ((insideQuotes == 0) && (arrayCheck == 0)){
+                     // Here the value is complete so store the pair
+                     cleanString(name);
+                     cleanString(value);
+                     data[name] = value;
+                     name = "";
+                     value = "";
+                     nameCheck = 1;
+                     valueCheck = 0;
+                   }
+                 }
+               }
+             } 
+          } //for
+          parsing = false; // for now assume entire response has been parsed
+          if (valueCheck == 1) {
+            if (arrayCheck == 1 || insideQuotes ==1) {
+              int eomReason;
+              size_t nread = 0;
+              debug(functionName, "*******Raw response incomplete******");
+              status = pasynOctetSyncIO->read(portUser_, replyArray, SPECS_MAX_STRING-1, SPECS_TIMEOUT, &nread, &eomReason);
+              replyArray[nread]='\0';
+              debug(functionName, "Extra received", replyArray);
+              // Only continue if the status is good...
+              if (status == asynSuccess){
+                replyString.assign(replyArray);
+                // Clean any : and whitespace from the ends of the string
+                cleanString(replyString);
+                parsing = true; 
+              }             
             } else {
-              // If we see a [ then we are in an array
-              if (cc == "["){
-                arrayCheck = 1;
-              // If we see a ] then we are exiting the array
-              } else if (cc == "]"){
-                arrayCheck = 0;
-              // If we see a " then we are entering quotes
-              } else if (cc == "\""){
-                insideQuotes = 1;
-              // If we see a ' ' then we might be at the end of the value
-              } else if (cc == " "){
-                // Check we are not inside quotes and not inside an array
-                if ((insideQuotes == 0) && (arrayCheck == 0)){
-                  // Here the value is complete so store the pair
-                  cleanString(name);
-                  cleanString(value);
-                  data[name] = value;
-                  name = "";
-                  value = "";
-                  nameCheck = 1;
-                  valueCheck = 0;
-                }
-              }
+              // end of reply and we are not in quotes or brackets so must have complete name:value pair
+              cleanString(name);
+              cleanString(value);
+              data[name] = value;
             }
           }
-          }
-        }
+        } //while
       }
 
     } else {
@@ -1940,10 +2006,11 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
   if (connected == 1){
     status = pasynOctetSyncIO->writeRead(portUser_ ,
                                          sendString, strlen(sendString),
-                                         replyArray, SPECS_MAX_STRING,
+                                         replyArray, SPECS_MAX_STRING-1,
                                          SPECS_TIMEOUT,
                                          &nwrite, &nread, &eomReason );
 
+    replyArray[nread]='\0';
     debug(functionName, "Raw response", replyArray);
     // Extract out the response, message counter, and error code
     if (!status && (replyArray[0] != '!')){
