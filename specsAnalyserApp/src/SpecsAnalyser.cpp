@@ -372,6 +372,13 @@ void SpecsAnalyser::specsAnalyserTask()
         setIntegerParam(SPECSSamples_, (energyChannels*iterations));
 
         // If the mode is snapshot then we need to calculate the number of energy channels
+        /*
+         * Explanation - normally the Validate command will return the number of energy channels via the "Samples" field
+         * For Snapshot mode this field is instead used to report the number of frames that will be used to tile across the energy range - the actual
+         * number of energy channels is given by Samples * the number of energy channels per frame. This is given by the detector binning settings in
+         * SpecsLab which aren't currently exposed.
+         *
+         */
         if (runMode == SPECS_RUN_SFAT){
           double start, end, width;
           getDoubleParam(SPECSStartEnergy_, &start);
@@ -575,7 +582,7 @@ void SpecsAnalyser::specsAnalyserTask()
             if (iteration == 0){
               doCallbacksFloat64Array(spectrum, currentDataPoint, SPECSAcqSpectrum_, 0);
             } else {
-              // After the first iteration the spectrum is already full og data, so always post the full array
+              // After the first iteration the spectrum is already full of data, so always post the full array
               doCallbacksFloat64Array(spectrum, energyChannels, SPECSAcqSpectrum_, 0);
             }
             // Notify listeners of the update to the image data
