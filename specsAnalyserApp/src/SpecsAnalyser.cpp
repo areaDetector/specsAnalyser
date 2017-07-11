@@ -486,7 +486,8 @@ void SpecsAnalyser::specsAnalyserTask()
 
 
 
-        while (acquire && status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
+        //while (acquire && status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
+        while (acquire && status == asynSuccess && (((data["ControllerState"] != "finished")||(currentDataPoint<energyChannels)) && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error"))){
           int readEndDataPoint;
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
@@ -509,8 +510,10 @@ void SpecsAnalyser::specsAnalyserTask()
 
             // On the first data point read out the ordinate range and units (not available until now).
             if (currentDataPoint == 0) {
+              //   This delay was introduced for SpecsLab 4.19 because it indicated data was availabe when it wasnt.
+              //   I beleive its not required any more (SpecsLab 4.30 appears happy without it) 
               // Wait for the dwell time to elapse to guarantee data will be ready to read out.
-              epicsThreadSleep(acquireTime);
+              //epicsThreadSleep(acquireTime); 
               readSpectrumDataInfo(SPECSOrdinateRange);
             }
             

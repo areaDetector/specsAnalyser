@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <components arch="linux-x86">
-	<EPICS_BASE.EpicsEnvSet key="EPICS_CA_MAX_ARRAY_BYTES" name="ENV.MAXBYTES" value="4000000"/>
+	<EPICS_BASE.EpicsEnvSet key="EPICS_CA_MAX_ARRAY_BYTES" name="ENV.MAXBYTES" value="8000000"/>
 	<EPICS_BASE.EpicsEnvSet key="EPICS_CA_SERVER_PORT" value="6064"/>
 	<EPICS_BASE.EpicsEnvSet key="EPICS_CA_REPEATER_PORT" value="6065"/>
 	<EPICS_BASE.dbpf name="DBPF.1" pv="TEST-SPECS-01:DataType" value="7"/>
