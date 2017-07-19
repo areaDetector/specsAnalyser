@@ -517,9 +517,10 @@ void SpecsAnalyser::specsAnalyserTask()
               readSpectrumDataInfo(SPECSOrdinateRange);
             }
             
-            // Request the extra points but limit the size of the read request because very large transfers are slow.
-            // (Maybe due to page swapping/allocation for large stl maps and vectors?)
-            const int maxValues=100000;
+            // Request the extra points 
+            // We can limits the size of the read request here to request the data in chunks.
+            // DLS detector is 900x1000 so maxValues is set slightly larger thus all data can be read with a single request if available (as occurs in snapshot mode)
+            const int maxValues=1000000;
             readEndDataPoint=numDataPoints;
             if ((readEndDataPoint-currentDataPoint)*nonEnergyChannels > maxValues) readEndDataPoint = currentDataPoint+(maxValues/nonEnergyChannels);
             //values.reserve((readEndDataPoint-currentDataPoint)*nonEnergyChannels); // unfortunately this doesnt seem to help speed things up
@@ -528,7 +529,7 @@ void SpecsAnalyser::specsAnalyserTask()
             // Loop over the vector of newly acquired points and store in the correct image location
             int index = 0;
             int numRxDataPoints=(int)values.size();
-            debug(functionName, "Number of samples read", (numDataPoints-currentDataPoint));
+            debug(functionName, "Number of samples read", (readEndDataPoint-currentDataPoint));
             debug(functionName, "Received data points", (int)values.size());
             if (numRxDataPoints < (readEndDataPoint-currentDataPoint)*nonEnergyChannels) {
               // Not enough points in values[] array
@@ -1225,22 +1226,21 @@ asynStatus SpecsAnalyser::readAcquisitionData(int startIndex, int endIndex, std:
     values.clear();
     std::string dataString = data["Data"];
     cleanString(dataString, "[]");
-    std::string dataItem;
-    size_t loc = 0;
     double dval = 0.0;
     // Loop over the string searching for commas
-    // NB old std::stringstream code here was replaced with sscanf to increase loop speed
-    size_t pos = 0;
-    const char* str = dataString.c_str();
-    while ((loc = dataString.find_first_of(",",pos)) != std::string::npos){
-      // At each occurrance of a comma, the text leading up to it is the value
-      sscanf(&str[pos], "%lf", &dval);
-      values.push_back(dval);
-      // Shorten the string by removing the processed item
-      pos=loc+1;
+    // NB old std::string code here was replaced with straight C to increase loop speed
+    char* startptr = (char*)dataString.c_str();
+    char* endptr = startptr;
+    while (*endptr != '\0') {
+        if (*endptr++ == ',') { 
+            // At each occurrance of a comma, the text leading up to it is the value
+            dval = strtod(startptr, NULL);
+            values.push_back(dval);
+            startptr = endptr;
+        }
     }
     // Don't forget the final data point
-    sscanf(&str[pos], "%lf", &dval);
+    dval = strtod(startptr, NULL);
     values.push_back(dval);
   }
   return status;
