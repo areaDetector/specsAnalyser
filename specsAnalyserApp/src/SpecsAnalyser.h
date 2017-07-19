@@ -30,7 +30,7 @@
 // String length
 #define SPECS_MAX_STRING 4096
 // Asyn timeout
-#define SPECS_TIMEOUT 1000
+#define SPECS_TIMEOUT 10
 // SPECS Update rate
 #define SPECS_UPDATE_RATE 0.1
 // SPECS Response OK/ERROR

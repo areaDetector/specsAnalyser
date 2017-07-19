@@ -2014,6 +2014,7 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
 
   // Only proceed if we are connected
   if (connected == 1){
+    pasynOctetSyncIO->flush(portUser_);
     status = pasynOctetSyncIO->writeRead(portUser_ ,
                                          sendString, strlen(sendString),
                                          replyArray, SPECS_MAX_STRING-1,
@@ -2042,7 +2043,7 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
         // Copy the response to the return string
         strcpy(response, replyString.substr(6).c_str());
       }
-    }
+    } else debug(functionName, "****Error asynStatus=",status);
   } else {
     status = asynError;
   }
