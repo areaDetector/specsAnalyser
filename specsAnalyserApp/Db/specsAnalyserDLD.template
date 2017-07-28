@@ -178,7 +178,7 @@ record(ao, "$(P)$(R)MAX_COUNT_RATE")
 {
   field(DESC, "Maximum Count Rate")
   field(DTYP, "asynFloat64")
-  field(OUT,  "@asyn($(PORT) 0)MAXIMUMCOUNTRATEKCPS")
+  field(OUT,  "@asyn($(PORT) 0)MAXIMUMCOUNTRATE")
   field(PREC, "1")
   field(EGU,  "kcps")
 }
@@ -187,7 +187,7 @@ record(ai, "$(P)$(R)MAX_COUNT_RATE_RBV")
 {
   field(DESC, "Maximum Count Rate")
   field(DTYP, "asynFloat64")
-  field(INP,  "@asyn($(PORT) 0)MAXIMUMCOUNTRATEKCPS")
+  field(INP,  "@asyn($(PORT) 0)MAXIMUMCOUNTRATE")
   field(SCAN, "I/O Intr")
   field(PREC, "1")
   field(EGU,  "kcps")

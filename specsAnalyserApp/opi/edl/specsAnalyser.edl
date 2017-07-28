@@ -3,8 +3,8 @@ beginScreenProperties
 major 4
 minor 0
 release 1
-x 741
-y 179
+x 743
+y 205
 w 390
 h 820
 font "arial-bold-r-12.0"
@@ -1548,5 +1548,23 @@ endGroup
 visPv "$(P)$(R)CONNECTED_RBV"
 visMin "0"
 visMax "1"
+endObjectProperties
+
+# (Textentry)
+object TextentryClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 275
+y 645
+w 50
+h 20
+controlPv "$(P)$(R)SLICES"
+fgColor index 25
+fgAlarm
+bgColor index 3
+fill
+font "arial-bold-r-12.0"
 endObjectProperties
 

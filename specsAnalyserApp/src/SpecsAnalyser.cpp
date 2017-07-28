@@ -849,6 +849,17 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
         debug(functionName, "Unable to resume in the current state");
       }
     }
+  } else if (function == SPECSNonEnergyChannels_){
+    status = setAnalyserParameter("NumNonEnergyChannels", value);
+    int newValue = 0;
+    if (status == asynSuccess){
+      status = getAnalyserParameter("NumNonEnergyChannels", newValue);
+    }
+    if (status == asynSuccess){
+      setIntegerParam(function, newValue);
+    } else {
+      setIntegerParam(function, oldValue);
+    }
   } else {
     // Check if the function is one of our stored parameter index values
     if (paramIndexes_.count(function) == 1){
@@ -1426,6 +1437,8 @@ asynStatus SpecsAnalyser::setupEPICSParameters()
         }
       }
     }
+    debug(functionName, "Constructed paramIndexes_", paramIndexes_);
+
   }
   return status;
 }
@@ -2194,6 +2207,26 @@ asynStatus SpecsAnalyser::debug(const std::string& method, const std::string& ms
 asynStatus SpecsAnalyser::debug(const std::string& method, const std::string& msg, std::map<std::string, std::string> value)
 {
   std::map<std::string, std::string>::iterator iter;
+
+  // First check for the debug entry in the debug map
+  if (debugMap_.count(method) == 1){
+    // Now check if debug is turned on
+    if (debugMap_[method] == 1){
+      // Print out the debug message
+      std::cout << method << ": " << msg << " [std::map" << std::endl;
+      // This is a map of data, so log the entire map
+      for (iter = value.begin(); iter != value.end(); ++iter) {
+        std::cout << "     " << iter->first << " => " << iter->second << std::endl;
+      }
+      std::cout << "]" << std::endl;
+    }
+  }
+  return asynSuccess;
+}
+
+asynStatus SpecsAnalyser::debug(const std::string& method, const std::string& msg, std::map<int, std::string> value)
+{
+  std::map<int, std::string>::iterator iter;
 
   // First check for the debug entry in the debug map
   if (debugMap_.count(method) == 1){

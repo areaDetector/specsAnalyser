@@ -300,6 +300,15 @@ record(longin, "$(P)$(R)SLICES_RBV")
   field(SCAN, "I/O Intr")
 }
 
+record(longout, "$(P)$(R)SLICES") 
+{
+  field(DESC, "Number of slices")
+  field(DTYP, "asynInt32")
+  field(OUT,  "@asyn($(PORT) 0)SPECS_NON_ENERGY_CHANNELS")
+  field(PINI, "No")
+  field(VAL,  "0")  
+}
+
 # Report back non-energy axis units
 record(stringin, "$(P)$(R)Y_UNITS_RBV")
 {

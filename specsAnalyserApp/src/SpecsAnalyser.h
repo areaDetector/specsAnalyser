@@ -173,6 +173,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus debug(const std::string& method, const std::string& msg, double value);
     asynStatus debug(const std::string& method, const std::string& msg, const std::string& value);
     asynStatus debug(const std::string& method, const std::string& msg, std::map<std::string, std::string> value);
+    asynStatus debug(const std::string& method, const std::string& msg, std::map<int, std::string> value);
 
   protected:
     int SPECSConnect_;

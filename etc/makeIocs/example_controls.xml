@@ -9,5 +9,6 @@
 	<!--Petes virtual server vws-005-->
 	<asyn.AsynIP name="DRV.1" noProcessEos="True" port="172.23.142.106:7010 TCP" priority="0"/>
 	<specsAnalyser.SpecsAnalyser ADDR="0" P="TEST-SPECS-01:" PORT="CCD.CAM" R="" TIMEOUT="1"/>
+	<!--<specsAnalyser.SpecsAnalyserDLD P="TEST-SPECS-01:" PORT="CCD.CAM" R=""/>-->
 	<ffmpegServer.diagnosticPlugins CAM="CCD.CAM" P="TEST-SPECS-01" PORTPREFIX="CCD" name="CCD.PLUGINS"/>
 </components>
