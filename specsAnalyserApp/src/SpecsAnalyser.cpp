@@ -62,6 +62,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
 
   // Initialise the debugger
   initDebugger(1);
+  debugLevel("SpecsAnalyser::asynWriteRead", 0);
 
   //Initialize non static data members
   portUser_  = NULL;
@@ -118,6 +119,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   createParam(SPECSNonEnergyUnitsString,            asynParamOctet,         &SPECSNonEnergyUnits_);
   createParam(SPECSNonEnergyMaxString,              asynParamFloat64,         &SPECSNonEnergyMax_);
   createParam(SPECSNonEnergyMinString,              asynParamFloat64,         &SPECSNonEnergyMin_);
+  createParam(SPECSSafeStateString,                 asynParamInt32,         &SPECSSafeState_);
 
   // Initialise SPECS parameters
   setIntegerParam(SPECSConnected_,                 0);
@@ -130,7 +132,8 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   setIntegerParam(SPECSPercentCompleteIteration_,  0);
   setIntegerParam(SPECSCurrentSampleIteration_,    0);
   setDoubleParam(SPECSRemainingTime_,              0.0);
-	setStringParam(ADManufacturer,                   "SPECS");
+  setStringParam(ADManufacturer,                   "SPECS");
+  setIntegerParam(SPECSSafeState_,                 1);
 
   if (status == asynSuccess){
     debug(functionName, "Starting up polling task....");
@@ -286,6 +289,7 @@ void SpecsAnalyser::specsAnalyserTask()
   int currentDataPoint = 0;
   int numDataPoints = 0;
   int runMode = 0;
+  int safeState = 1;
   const char *functionName = "SpecsAnalyser::specsAnalyserTask";
 
   debug(functionName, "Polling thread started");
@@ -466,6 +470,8 @@ void SpecsAnalyser::specsAnalyserTask()
       getIntegerParam(ADNumImages, &numImages);
       getIntegerParam(ADImageMode, &imageMode);
 
+      getIntegerParam(SPECSSafeState_, &safeState);
+
       // Set the status and message to notify user we are acquiring
       setIntegerParam(ADStatus, ADStatusInitializing);
       setStringParam(ADStatusMessage, "Executing pre-scan...");
@@ -476,7 +482,7 @@ void SpecsAnalyser::specsAnalyserTask()
         // Clear any stale data from previous acquisitions
         sendSimpleCommand(SPECS_CMD_CLEAR);
         // Send the start command
-        sendSimpleCommand(SPECS_CMD_START);
+        sendStartCommand(safeState);
 
         std::vector<double> values;
         currentDataPoint = 0;
@@ -512,8 +518,11 @@ void SpecsAnalyser::specsAnalyserTask()
             if (currentDataPoint == 0) {
               //   This delay was introduced for SpecsLab 4.19 because it indicated data was availabe when it wasnt.
               //   I beleive its not required any more (SpecsLab 4.30 appears happy without it) 
+              //     3/8/17 This is still causing problems so re-introduced a small delay
               // Wait for the dwell time to elapse to guarantee data will be ready to read out.
-              //epicsThreadSleep(acquireTime); 
+              double period = fmin(acquireTime,5.0);
+              debug(functionName, "epicsThreadSleep", period);
+              epicsThreadSleep(period); 
               readSpectrumDataInfo(SPECSOrdinateRange);
             }
             
@@ -860,6 +869,16 @@ asynStatus SpecsAnalyser::writeInt32(asynUser *pasynUser, epicsInt32 value)
     } else {
       setIntegerParam(function, oldValue);
     }
+  } else if (function == SPECSSafeState_ && value){
+    if (adstatus == ADStatusIdle || adstatus == ADStatusError || adstatus == ADStatusAborted) {
+        // set SafeState on
+        sendSimpleCommand(SPECS_CMD_SET_SAFE_STATE);
+    } else {
+        // Do not act on the safe state request, we are not idle
+        setIntegerParam(SPECSSafeState_, oldValue);
+        debug(functionName, "Unable to enter safe state while busy");
+        status=asynError;
+    }
   } else {
     // Check if the function is one of our stored parameter index values
     if (paramIndexes_.count(function) == 1){
@@ -1048,6 +1067,32 @@ asynStatus SpecsAnalyser::validateSpectrum()
   }
   return status;
 }
+
+/**
+ * Send the start command to the analyser
+ */
+asynStatus SpecsAnalyser::sendStartCommand(bool safeAfter)
+{
+  static const char *functionName = "SpecsAnalyser::sendStartCommand";
+
+  asynStatus status = asynSuccess;
+  std::stringstream command;
+
+  // Construct the correct command string format
+  command << SPECS_CMD_START << " ";
+  // Add the SetSafeStateAfter
+  if (safeAfter) {
+    command << "SetSafeStateAfter:\"true\"";
+  } else {
+    command << "SetSafeStateAfter:\"false\"";
+  }
+
+  debug(functionName, "Sending command", command.str());
+  // Send the command and get the reply
+  status = sendSimpleCommand(command.str());
+  return status;
+}
+  
 
 /**
  * Define a Fixed Analyser Transmission spectrum.  All of the desired parameters should

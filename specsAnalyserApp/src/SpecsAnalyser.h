@@ -71,6 +71,7 @@
 #define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
 #define SPECS_CMD_GET_SPECTRUM "GetSpectrumParameterInfo"
 #define SPECS_CMD_GET_DATA_INFO "GetSpectrumDataInfo"
+#define SPECS_CMD_SET_SAFE_STATE "SetSafeState"
 
 // Pre-defined EPICS Parameter Names
 #define SPECSConnectString                   "SPECS_CONNECT"
@@ -109,6 +110,7 @@
 #define SPECSNonEnergyUnitsString            "SPECS_NON_ENERGY_UNITS"
 #define SPECSNonEnergyMinString              "SPECS_NON_ENERGY_MIN"
 #define SPECSNonEnergyMaxString              "SPECS_NON_ENERGY_MAX"
+#define SPECSSafeStateString                 "SPECS_SAFE_STATE"
 
 typedef enum
 {
@@ -141,6 +143,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus defineSpectrumFRR();
     asynStatus defineSpectrumFE();
     asynStatus readAcquisitionData(int startIndex, int endIndex, std::vector<double> &values);
+    asynStatus sendStartCommand(bool safeAfter);
     asynStatus sendSimpleCommand(const std::string& command, std::map<std::string, std::string> *data = NULL);
     asynStatus readDeviceVisibleName();
     asynStatus setupEPICSParameters();
@@ -213,7 +216,8 @@ class SpecsAnalyser: public ADDriver
     int SPECSNonEnergyUnits_;
     int SPECSNonEnergyMin_;
     int SPECSNonEnergyMax_;
-    #define LAST_SPECS_PARAM SPECSNonEnergyMax_
+    int SPECSSafeState_;
+    #define LAST_SPECS_PARAM SPECSSafeState_
 
   private:
     asynUser                           *portUser_;

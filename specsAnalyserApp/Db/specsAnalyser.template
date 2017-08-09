@@ -98,6 +98,26 @@ record(bo, "$(P)$(R)ReverseY")
   field(DISA, "1")
 }
 
+record(bo, "$(P)$(R)SAFE_STATE") 
+{
+  field(DESC, "Set safe state")
+  field(DTYP, "asynInt32")
+  field(OUT,  "@asyn($(PORT) 0)SPECS_SAFE_STATE")
+  field(ZNAM, "False")
+  field(ONAM, "True")
+}
+
+# Report back the connected state of the IOC
+record(bi, "$(P)$(R)SAFE_STATE_RBV") 
+{
+  field(DESC, "Current safe state")
+  field(DTYP, "asynInt32")
+  field(INP,  "@asyn($(PORT) 0)SPECS_SAFE_STATE")
+  field(SCAN, "I/O Intr")
+  field(ZNAM, "False")
+  field(ONAM, "True")
+}
+
 # Force a connection to establish
 record(longout, "$(P)$(R)CONNECT") 
 {
