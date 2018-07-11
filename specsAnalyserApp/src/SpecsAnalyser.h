@@ -111,6 +111,7 @@
 #define SPECSNonEnergyMinString              "SPECS_NON_ENERGY_MIN"
 #define SPECSNonEnergyMaxString              "SPECS_NON_ENERGY_MAX"
 #define SPECSSafeStateString                 "SPECS_SAFE_STATE"
+#define SPECSDataDelayMaxString              "SPECS_DATA_DELAY_MAX"
 
 typedef enum
 {
@@ -217,7 +218,8 @@ class SpecsAnalyser: public ADDriver
     int SPECSNonEnergyMin_;
     int SPECSNonEnergyMax_;
     int SPECSSafeState_;
-    #define LAST_SPECS_PARAM SPECSSafeState_
+    int SPECSDataDelayMax_;
+    #define LAST_SPECS_PARAM SPECSDataDelayMax_
 
   private:
     asynUser                           *portUser_;

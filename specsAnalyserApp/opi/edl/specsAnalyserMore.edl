@@ -1,0 +1,217 @@
+4 0 1
+beginScreenProperties
+major 4
+minor 0
+release 1
+x 1094
+y 408
+w 500
+h 160
+font "arial-bold-r-12.0"
+ctlFont "arial-bold-r-12.0"
+btnFont "arial-bold-r-12.0"
+fgColor index 14
+bgColor index 3
+textColor index 14
+ctlFgColor1 index 25
+ctlFgColor2 index 25
+ctlBgColor1 index 3
+ctlBgColor2 index 3
+topShadowColor index 1
+botShadowColor index 11
+showGrid
+snapToGrid
+gridSize 5
+endScreenProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 10
+y 50
+w 480
+h 70
+lineColor index 14
+fill
+fillColor index 3
+endObjectProperties
+
+# (Textupdate)
+object TextupdateClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 190
+y 60
+w 55
+h 20
+controlPv "$(P)$(R)DATA_DELAY_MAX_RBV"
+precision 5
+fgColor index 16
+fgAlarm
+bgColor index 10
+fill
+font "arial-bold-r-12.0"
+fontAlign "center"
+endObjectProperties
+
+# (Textentry)
+object TextentryClass
+beginObjectProperties
+major 10
+minor 0
+release 0
+x 130
+y 60
+w 55
+h 20
+controlPv "$(P)$(R)DATA_DELAY_MAX"
+displayMode "decimal"
+precision 3
+fgColor index 25
+fgAlarm
+bgColor index 3
+fill
+font "arial-bold-r-12.0"
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 30
+y 60
+w 95
+h 20
+font "arial-bold-r-12.0"
+fgColor index 14
+bgColor index 3
+useDisplayBg
+value {
+  "Data Delay Max"
+}
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 10
+y 40
+w 143
+h 13
+font "arial-medium-r-12.0"
+fgColor index 14
+bgColor index 5
+value {
+  "  Additional Parameters   "
+}
+autoSize
+border
+endObjectProperties
+
+# (Rectangle)
+object activeRectangleClass
+beginObjectProperties
+major 4
+minor 0
+release 0
+x 0
+y 0
+w 500
+h 30
+lineColor index 48
+fill
+fillColor index 48
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 55
+y 5
+w 350
+h 20
+font "arial-bold-r-16.0"
+fgColor index 14
+bgColor index 3
+useDisplayBg
+value {
+  "Electron Analyser - $(P)$(R)"
+}
+endObjectProperties
+
+# (Message Button)
+object activeMessageButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 250
+y 60
+w 60
+h 20
+fgColor index 25
+onColor index 3
+offColor index 3
+topShadowColor index 1
+botShadowColor index 11
+controlPv "$(P)$(R)DATA_DELAY_MAX"
+pressValue "5"
+onLabel "Default"
+offLabel "Default"
+3d
+font "arial-bold-r-12.0"
+endObjectProperties
+
+# (Exit Button)
+object activeExitButtonClass
+beginObjectProperties
+major 4
+minor 1
+release 0
+x 430
+y 130
+w 60
+h 25
+fgColor index 46
+bgColor index 3
+topShadowColor index 1
+botShadowColor index 11
+label "EXIT"
+font "arial-bold-r-14.0"
+3d
+endObjectProperties
+
+# (Static Text)
+object activeXTextClass
+beginObjectProperties
+major 4
+minor 1
+release 1
+x 30
+y 85
+w 437
+h 26
+font "arial-bold-r-12.0"
+fgColor index 20
+bgColor index 3
+useDisplayBg
+value {
+  "Delay between data being indicated as ready by SPES library and data "
+  "transfer beginning. Setting this delay too small may result in loss of data."
+}
+autoSize
+endObjectProperties
+

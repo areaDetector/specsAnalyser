@@ -120,6 +120,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   createParam(SPECSNonEnergyMaxString,              asynParamFloat64,         &SPECSNonEnergyMax_);
   createParam(SPECSNonEnergyMinString,              asynParamFloat64,         &SPECSNonEnergyMin_);
   createParam(SPECSSafeStateString,                 asynParamInt32,         &SPECSSafeState_);
+  createParam(SPECSDataDelayMaxString,              asynParamFloat64,       &SPECSDataDelayMax_);
 
   // Initialise SPECS parameters
   setIntegerParam(SPECSConnected_,                 0);
@@ -134,6 +135,7 @@ SpecsAnalyser::SpecsAnalyser(const char *portName, const char *driverPort, int m
   setDoubleParam(SPECSRemainingTime_,              0.0);
   setStringParam(ADManufacturer,                   "SPECS");
   setIntegerParam(SPECSSafeState_,                 1);
+  setDoubleParam(SPECSDataDelayMax_,               5.0);
 
   if (status == asynSuccess){
     debug(functionName, "Starting up polling task....");
@@ -520,7 +522,9 @@ void SpecsAnalyser::specsAnalyserTask()
               //   I beleive its not required any more (SpecsLab 4.30 appears happy without it) 
               //     3/8/17 This is still causing problems so re-introduced a small delay
               // Wait for the dwell time to elapse to guarantee data will be ready to read out.
-              double period = fmin(acquireTime,5.0);
+              double period;
+              getDoubleParam(SPECSDataDelayMax_, &period);
+              period = fmin(acquireTime,period);
               debug(functionName, "epicsThreadSleep", period);
               epicsThreadSleep(period); 
               readSpectrumDataInfo(SPECSOrdinateRange);
