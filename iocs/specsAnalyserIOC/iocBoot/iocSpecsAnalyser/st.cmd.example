@@ -1,0 +1,40 @@
+#!../../bin/linux-x86_64/specsAnalyserApp
+
+< envPaths
+
+epicsEnvSet("ADCORE", "$(AREA_DETECTOR)/ADCore")
+
+epicsEnvSet("EPICS_CA_AUTO_ADDR_LIST" , "NO")
+epicsEnvSet("EPICS_CA_ADDR_LIST"      , "10.23.0.255")
+epicsEnvSet("EPICS_CA_MAX_ARRAY_BYTES", "10000000")
+
+dbLoadDatabase("$(TOP)/dbd/specsAnalyserApp.dbd",0,0)
+specsAnalyserApp_registerRecordDeviceDriver(pdbbase)
+
+epicsEnvSet("PREFIX",	"XF:23ID2-ES{SPECS}")
+epicsEnvSet("PORT",     "SPECS1")
+epicsEnvSet("QSIZE",    "20")
+epicsEnvSet("XSIZE",    "2048")
+epicsEnvSet("YSIZE",    "2048")
+epicsEnvSet("NCHANS",   "2048")
+epicsEnvSet("CBUFFS",   "500")
+epicsEnvSet("EPICS_DB_INCLUDE_PATH", "$(ADCORE)/db")
+
+drvAsynIPPortConfigure("SPECS_ASYN", "localhost:7010")
+asynSetTraceMask("SPECS_ASYN", 0, 0x9)
+asynSetTraceIOMask("SPECS_ASYN", 0, 0x2)
+
+specsAnalyserConfig("$(PORT)", "SPECS_ASYN", 0, 0)
+
+dbLoadRecords("$(ADSPECS)/db/specsAnalyser.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+dbLoadRecords("$(ADSPECS)/db/specsAnalyserDLD.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADCORE)/db/ADBase.template","P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+
+< $(ADCORE)/iocBoot/commonPlugins.cmd
+
+set_requestfile_path("$(ADSPECS)/specsAnalyserApp/Db")
+set_requestfile_path("$(ADCORE)/ADApp/Db")
+
+iocInit()
+
+create_monitor_set("auto_settings.req", 30, "P=$(PREFIX),D=cam1:")
