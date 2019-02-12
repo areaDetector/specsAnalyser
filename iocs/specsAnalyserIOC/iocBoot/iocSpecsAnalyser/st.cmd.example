@@ -11,30 +11,40 @@ epicsEnvSet("EPICS_CA_MAX_ARRAY_BYTES", "10000000")
 dbLoadDatabase("$(TOP)/dbd/specsAnalyserApp.dbd",0,0)
 specsAnalyserApp_registerRecordDeviceDriver(pdbbase)
 
-epicsEnvSet("PREFIX",	"XF:23ID2-ES{SPECS}")
-epicsEnvSet("PORT",     "SPECS1")
-epicsEnvSet("QSIZE",    "20")
-epicsEnvSet("XSIZE",    "2048")
-epicsEnvSet("YSIZE",    "2048")
-epicsEnvSet("NCHANS",   "2048")
-epicsEnvSet("CBUFFS",   "500")
+epicsEnvSet("PREFIX",                "XF:23ID2-ES{SPECS}")
+epicsEnvSet("PORT",                  "SPECS1")
+epicsEnvSet("QSIZE",                 "20")
+epicsEnvSet("XSIZE",                 "2048")
+epicsEnvSet("YSIZE",                 "2048")
+epicsEnvSet("NCHANS",                "2048")
+epicsEnvSet("CBUFFS",                "500")
 epicsEnvSet("EPICS_DB_INCLUDE_PATH", "$(ADCORE)/db")
 
-drvAsynIPPortConfigure("SPECS_ASYN", "localhost:7010")
+drvAsynIPPortConfigure("SPECS_ASYN", "10.23.0.36:7010")
 asynSetTraceMask("SPECS_ASYN", 0, 0x9)
 asynSetTraceIOMask("SPECS_ASYN", 0, 0x2)
+asynOctetSetInputEos("SPECS_ASYN", 0, "\n")
+asynOctetSetOutputEos("SPECS_ASYN", 0, "\n")
+
+dbLoadRecords("$(ASYN)/db/asynRecord.db","P=XF:23ID2-ES{SPECS},R=Asyn,PORT=SPECS_ASYN,ADDR=0")
 
 specsAnalyserConfig("$(PORT)", "SPECS_ASYN", 0, 0)
+specsAnalyserDebug("$(PORT)", "all", 1)
 
 dbLoadRecords("$(ADSPECS)/db/specsAnalyser.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
-dbLoadRecords("$(ADSPECS)/db/specsAnalyserDLD.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
-#dbLoadRecords("$(ADCORE)/db/ADBase.template","P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADSPECS)/db/specsAnalyserDLD.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+
+NDStdArraysConfigure("Image1", 5, 0, "$(PORT)", 0, 0)
+dbLoadRecords("NDStdArrays.template", "P=$(PREFIX),R=image1:,PORT=Image1,NDARRAY_PORT=$(PORT),ADDR=0,TIMEOUT=1,TYPE=Float64,FTVL=DOUBLE,NELEMENTS=2361600")
 
 < $(ADCORE)/iocBoot/commonPlugins.cmd
 
 set_requestfile_path("$(ADSPECS)/specsAnalyserApp/Db")
 set_requestfile_path("$(ADCORE)/ADApp/Db")
+set_requestfile_path("$(CALC)/calcApp/Db")
 
 iocInit()
 
 create_monitor_set("auto_settings.req", 30, "P=$(PREFIX),D=cam1:")
+
+dbpf $(PREFIX)cam1:NDAttributesFile specsAnalyserAttributes.xml
