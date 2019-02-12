@@ -6,6 +6,8 @@
 # This associates the template with an edm screen
 # % gui, $(PORT), edmtab, specsAnalyser.edl, P=$(P),R=$(R)
 
+include "ADBase.template"
+
 ########## Disable Redundant areaDetector Fields #########
 
 record(longout, "$(P)$(R)BinX")
@@ -191,21 +193,25 @@ record(longin, "$(P)$(R)TOTAL_POINTS_RBV")
 }
 
 # Pause an acquisition
-record(longout, "$(P)$(R)PAUSE") 
+record(bo, "$(P)$(R)PAUSE") 
 {
   field(DESC, "Pause an acquisition")
   field(DTYP, "asynInt32")
   field(OUT,  "@asyn($(PORT) 0)SPECS_PAUSE_ACQ")
   field(VAL,  "0")
+  field(ZNAM, "RUN")
+  field(ONAM, "PAUSE")
 }
 
 # Report back the number of snapshot values
-record(longin, "$(P)$(R)PAUSE_RBV") 
+record(bi, "$(P)$(R)PAUSE_RBV") 
 {
   field(DESC, "Current paused status")
   field(DTYP, "asynInt32")
   field(INP,  "@asyn($(PORT) 0)SPECS_PAUSE_ACQ")
   field(SCAN, "I/O Intr")
+  field(ZNAM, "RUN")
+  field(ONAM, "PAUSED")
 }
 
 # Set the number of values (used by snapshot FAT mode)
@@ -342,7 +348,7 @@ record(longout, "$(P)$(R)SLICES")
   field(DESC, "Number of slices")
   field(DTYP, "asynInt32")
   field(OUT,  "@asyn($(PORT) 0)SPECS_NON_ENERGY_CHANNELS")
-  field(PINI, "No")
+  field(PINI, "0")
   field(VAL,  "0")  
 }
 
