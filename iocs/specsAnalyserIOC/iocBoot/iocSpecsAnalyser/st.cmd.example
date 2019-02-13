@@ -29,7 +29,7 @@ asynOctetSetOutputEos("SPECS_ASYN", 0, "\n")
 dbLoadRecords("$(ASYN)/db/asynRecord.db","P=XF:23ID2-ES{SPECS},R=Asyn,PORT=SPECS_ASYN,ADDR=0")
 
 specsAnalyserConfig("$(PORT)", "SPECS_ASYN", 0, 0)
-specsAnalyserDebug("$(PORT)", "all", 1)
+specsAnalyserDebug("$(PORT)", "all", 0)
 
 dbLoadRecords("$(ADSPECS)/db/specsAnalyser.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
 #dbLoadRecords("$(ADSPECS)/db/specsAnalyserDLD.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
