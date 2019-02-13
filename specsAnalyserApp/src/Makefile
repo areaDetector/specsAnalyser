@@ -9,7 +9,8 @@ include $(TOP)/configure/CONFIG
 LIBRARY_IOC += specs
 #
 # The following are compiled and added to the support library
-LIB_SRCS += SpecsAnalyser.cpp
+LIB_SRCS += specsAnalyser.cpp
+INC += specsAnalyser.h
 DBD += specsAnalyserSupport.dbd
 
 include $(ADCORE)/ADApp/commonLibraryMakefile

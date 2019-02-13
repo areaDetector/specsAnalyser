@@ -1,4 +1,4 @@
-#include "SpecsAnalyser.h"
+#include "specsAnalyser.h"
 
 /**
  * A bit of C glue to make the config function available in the startup script (ioc shell) 
