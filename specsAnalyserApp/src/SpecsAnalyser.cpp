@@ -2062,7 +2062,7 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
   // String starts with query:    ?
   // Followed by 4 digit number:  nnnn
   // Then a space and finally the command
-  sprintf(sendString, "?%04d %s\n", msgCounter, command);
+  sprintf(sendString, "?%04d %s", msgCounter, command);
 
   // If there is no asyn port user then something higher up has failed
   // Make sure to set connected to 0 and then bail out of this call with an error
