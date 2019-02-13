@@ -1795,7 +1795,11 @@ asynStatus SpecsAnalyser::readSpectrumDataInfo(SPECSDataInfoParam_t param)
        switch(param) {
 	 case SPECSOrdinateRange:
 	   unit = data["Unit"];
-	   cleanString(unit, "\"");
+       if(unit == "\"\""){
+         unit = "";
+       } else {
+	     cleanString(unit, "\"");
+       }
 	   setStringParam(SPECSNonEnergyUnits_, unit.c_str());
 	   if (readDoubleData(data, "Min", min) == asynSuccess)
 	     setDoubleParam(SPECSNonEnergyMin_, min);
