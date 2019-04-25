@@ -1,0 +1,12 @@
+<?xml version="1.0" standalone="no" ?>
+<!-- Attributes -->
+<Attributes
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../../../ADCore/XML_schema/NDAttributes.xsd"
+    >
+    <Attribute name="PassEnergy"    type="PARAM" source="SPECS_PASS_ENERGY"    datatype="DOUBLE" description="Analyser Pass Energy"/>
+    <Attribute name="StartEnergy"   type="PARAM" source="SPECS_START_ENERGY"   datatype="DOUBLE" description="Start Energy"/>
+    <Attribute name="StopEnergy"    type="PARAM" source="SPECS_END_ENERGY"     datatype="DOUBLE" description="Stop Energy"/>
+    <Attribute name="StepEnergy"    type="PARAM" source="SPECS_STEP_WIDTH"     datatype="DOUBLE" description="Step Energy"/>
+</Attributes>
+

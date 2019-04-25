@@ -40,4 +40,3 @@ ifdef T_A
   -include $(AREA_DETECTOR)/configure/CONFIG_SITE.Common.$(T_A)
   -include $(AREA_DETECTOR)/configure/CONFIG_SITE.$(EPICS_HOST_ARCH).$(T_A)
 endif
-

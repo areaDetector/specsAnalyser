@@ -1,4 +1,4 @@
-#include "SpecsAnalyser.h"
+#include "specsAnalyser.h"
 
 /**
  * A bit of C glue to make the config function available in the startup script (ioc shell) 
@@ -1795,7 +1795,11 @@ asynStatus SpecsAnalyser::readSpectrumDataInfo(SPECSDataInfoParam_t param)
        switch(param) {
 	 case SPECSOrdinateRange:
 	   unit = data["Unit"];
-	   cleanString(unit, "\"");
+       if(unit == "\"\""){
+         unit = "";
+       } else {
+	     cleanString(unit, "\"");
+       }
 	   setStringParam(SPECSNonEnergyUnits_, unit.c_str());
 	   if (readDoubleData(data, "Min", min) == asynSuccess)
 	     setDoubleParam(SPECSNonEnergyMin_, min);
@@ -2062,7 +2066,7 @@ asynStatus SpecsAnalyser::asynWriteRead(const char *command, char *response)
   // String starts with query:    ?
   // Followed by 4 digit number:  nnnn
   // Then a space and finally the command
-  sprintf(sendString, "?%04d %s\n", msgCounter, command);
+  sprintf(sendString, "?%04d %s", msgCounter, command);
 
   // If there is no asyn port user then something higher up has failed
   // Make sure to set connected to 0 and then bail out of this call with an error
