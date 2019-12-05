@@ -1,5 +1,5 @@
-specsAnalyser areaDetector driver
-=================================
+specsAnalyser
+=============
 :Info: An areaDetector driver for the SPECS Phobios electron analyzers
 :Author: XX
 
