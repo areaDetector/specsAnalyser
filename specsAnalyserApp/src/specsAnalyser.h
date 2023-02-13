@@ -50,28 +50,43 @@
 #define SPECS_TYPE_BOOL    "bool"
 
 // SPECS Command Strings
-#define SPECS_CMD_CONNECT      "Connect"
-#define SPECS_CMD_DISCONNECT   "Disconnect"
-#define SPECS_CMD_DEFINE_FAT   "DefineSpectrumFAT"
-#define SPECS_CMD_DEFINE_SFAT  "DefineSpectrumSFAT"
-#define SPECS_CMD_DEFINE_FRR   "DefineSpectrumFRR"
-#define SPECS_CMD_DEFINE_FE    "DefineSpectrumFE"
-#define SPECS_CMD_VALIDATE     "ValidateSpectrum"
-#define SPECS_CMD_START        "Start"
-#define SPECS_CMD_PAUSE        "Pause"
-#define SPECS_CMD_RESUME       "Resume"
-#define SPECS_CMD_ABORT        "Abort"
-#define SPECS_CMD_GET_STATUS   "GetAcquisitionStatus"
-#define SPECS_CMD_GET_DATA     "GetAcquisitionData"
-#define SPECS_CMD_CLEAR        "ClearSpectrum"
-#define SPECS_CMD_GET_NAMES    "GetAllAnalyzerParameterNames"
-#define SPECS_CMD_GET_INFO     "GetAnalyzerParameterInfo"
-#define SPECS_CMD_GET_VISNAME  "GetAnalyzerVisibleName"
-#define SPECS_CMD_GET_VALUE    "GetAnalyzerParameterValue"
-#define SPECS_CMD_SET_VALUE    "SetAnalyzerParameterValue"
-#define SPECS_CMD_GET_SPECTRUM "GetSpectrumParameterInfo"
-#define SPECS_CMD_GET_DATA_INFO "GetSpectrumDataInfo"
-#define SPECS_CMD_SET_SAFE_STATE "SetSafeState"
+#define SPECS_CMD_CONNECT             "Connect"
+#define SPECS_CMD_DISCONNECT          "Disconnect"
+#define SPECS_CMD_DEFINE_FAT          "DefineSpectrumFAT"
+#define SPECS_CMD_DEFINE_SFAT         "DefineSpectrumSFAT"
+#define SPECS_CMD_DEFINE_FRR          "DefineSpectrumFRR"
+#define SPECS_CMD_DEFINE_FE           "DefineSpectrumFE"
+#define SPECS_CMD_VALIDATE            "ValidateSpectrum"
+#define SPECS_CMD_START               "Start"
+#define SPECS_CMD_PAUSE               "Pause"
+#define SPECS_CMD_RESUME              "Resume"
+#define SPECS_CMD_ABORT               "Abort"
+#define SPECS_CMD_GET_STATUS          "GetAcquisitionStatus"
+#define SPECS_CMD_GET_DATA            "GetAcquisitionData"
+#define SPECS_CMD_CLEAR               "ClearSpectrum"
+#define SPECS_CMD_GET_NAMES           "GetAllAnalyzerParameterNames"
+#define SPECS_CMD_GET_INFO            "GetAnalyzerParameterInfo"
+#define SPECS_CMD_GET_VISNAME         "GetAnalyzerVisibleName"
+#define SPECS_CMD_GET_VALUE           "GetAnalyzerParameterValue"
+#define SPECS_CMD_SET_VALUE           "SetAnalyzerParameterValue"
+#define SPECS_CMD_GET_SPECTRUM        "GetSpectrumParameterInfo"
+#define SPECS_CMD_GET_DATA_INFO       "GetSpectrumDataInfo"
+
+#define SPECS_CMD_GET_ALL_DEVICE      "GetAllDeviceCommands"
+#define SPECS_CMD_GET_DEVICE_NAME     "GetAllDeviceParameterNames"
+#define SPECS_CMD_GET_DEVICE_INFO     "GetDeviceParameterInfo"
+#define SPECS_CMD_GET_DEVICE_VALUE    "GetDeviceParameterValue"
+#define SPECS_CMD_SET_DEVICE_VALUE    "SetDeviceParameterValue"
+
+#define SPECS_CMD_SET_SAFE_STATE      "SetSafeState"
+
+#define SPECS_CMD_NEW_DIRECT_DEVICE   "CreateDirectDeviceCommand"
+#define SPECS_CMD_GET_DIRECT_INFO     "CreateDirectDeviceCommand"
+#define SPECS_CMD_GET_DIRECT_VALUE    "GetDirectDeviceParameterValue"
+#define SPECS_CMD_SET_DIRECT_VALUE    "SetDirectDeviceParameterValue"
+#define SPECS_CMD_EXE_DIRECT_DEVICE   "ExecuteDirectDeviceCommand"
+
+
 
 // Pre-defined EPICS Parameter Names
 #define SPECSConnectString                   "SPECS_CONNECT"
@@ -148,6 +163,7 @@ class SpecsAnalyser: public ADDriver
     asynStatus sendSimpleCommand(const std::string& command, std::map<std::string, std::string> *data = NULL);
     asynStatus readDeviceVisibleName();
     asynStatus setupEPICSParameters();
+    asynStatus setupEPICSDevices();
     asynStatus getAnalyserParameterType(const std::string& name, SPECSValueType_t &value);
     asynStatus getAnalyserParameter(const std::string& name, int &value);
     asynStatus getAnalyserParameter(const std::string& name, double &value);

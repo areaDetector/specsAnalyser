@@ -204,6 +204,11 @@ asynStatus SpecsAnalyser::makeConnection()
         setIntegerParam(SPECSNonEnergyChannels_, nonEnergyChannels);
       }
 
+      // Setup all of the available device obtained from the hardware
+      //if (status == asynSuccess){
+      //  status = setupEPICSDevices();
+      //}
+
       // Publish any updates necessary
       callParamCallbacks();
 
@@ -295,7 +300,6 @@ void SpecsAnalyser::specsAnalyserTask()
   const char *functionName = "SpecsAnalyser::specsAnalyserTask";
 
   debug(functionName, "Polling thread started");
-
   this->lock();
   while (1){
     getIntegerParam(ADAcquire, &acquire);
@@ -490,12 +494,15 @@ void SpecsAnalyser::specsAnalyserTask()
         currentDataPoint = 0;
         numDataPoints = 0;
         sendSimpleCommand(SPECS_CMD_GET_STATUS, &data);
-        pNDImage = (double *)(pImage->pData);
-
-
+        
+        //pNDImage = (double *)(pImage->pData);
 
         //while (acquire && status == asynSuccess && (((data["ControllerState"] != "finished") && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error")) || (numDataPoints != currentDataPoint))){
-        while (acquire && status == asynSuccess && (((data["ControllerState"] != "finished")||(currentDataPoint<energyChannels)) && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error"))){
+        //while (acquire  && status == asynSuccess && (((data["ControllerState"] != "finished")||(currentDataPoint<energyChannels)) && (data["ControllerState"] != "aborted") && (data["ControllerState"] != "error"))){
+        while (acquire && status == asynSuccess && currentDataPoint < energyChannels && data["ControllerState"] != "finished" && data["ControllerState"] != "aborted" && data["ControllerState"] != "error"){
+          
+          //printf("CurrentDataPoint = %i - NumEnergy = %i - Energy = %i\n",currentDataPoint,numDataPoints,energyChannels);
+
           int readEndDataPoint;
           this->unlock();
           epicsThreadSleep(SPECS_UPDATE_RATE);
@@ -522,11 +529,11 @@ void SpecsAnalyser::specsAnalyserTask()
               //   I beleive its not required any more (SpecsLab 4.30 appears happy without it) 
               //     3/8/17 This is still causing problems so re-introduced a small delay
               // Wait for the dwell time to elapse to guarantee data will be ready to read out.
-              double period;
-              getDoubleParam(SPECSDataDelayMax_, &period);
-              period = fmin(acquireTime,period);
-              debug(functionName, "epicsThreadSleep", period);
-              epicsThreadSleep(period); 
+              //double period;
+              //getDoubleParam(SPECSDataDelayMax_, &period);
+              //period = fmin(acquireTime,period);
+              //debug(functionName, "epicsThreadSleep", period);
+              //epicsThreadSleep(period); 
               readSpectrumDataInfo(SPECSOrdinateRange);
             }
             
@@ -538,7 +545,6 @@ void SpecsAnalyser::specsAnalyserTask()
             if ((readEndDataPoint-currentDataPoint)*nonEnergyChannels > maxValues) readEndDataPoint = currentDataPoint+(maxValues/nonEnergyChannels);
             //values.reserve((readEndDataPoint-currentDataPoint)*nonEnergyChannels); // unfortunately this doesnt seem to help speed things up
             readAcquisitionData(currentDataPoint, (readEndDataPoint-1), values);
-
             // Loop over the vector of newly acquired points and store in the correct image location
             int index = 0;
             int numRxDataPoints=(int)values.size();
@@ -555,7 +561,6 @@ void SpecsAnalyser::specsAnalyserTask()
               setStringParam(ADStatusMessage, "SPECS Receive Error, see log");
               continue;
             }
-
             for (int y = 0; y < nonEnergyChannels; y++){
 
               // Quick and dirty fix to work around an issues with snapshot mode - if samples is set too high SPECS will misreport
@@ -563,7 +568,8 @@ void SpecsAnalyser::specsAnalyserTask()
               // abort before we overflow and crash.
               // Note the data we get will be nonsense if iterations > 1.
               // EW
-              if (numDataPoints > energyChannels) {
+
+              if (numDataPoints > energyChannels)  {
                 debug(functionName, "Data overflow: More data than number of allocated energyChannels received");
                 // Sent the message to the analyser to stop
                 sendSimpleCommand(SPECS_CMD_ABORT);
@@ -573,18 +579,17 @@ void SpecsAnalyser::specsAnalyserTask()
                 setStringParam(ADStatusMessage, "SPECS Controller Error(B), see log");
                 break;
               }
-
               for (int x = currentDataPoint; x < readEndDataPoint; x++){
                 // Uncomment next 3 lines for (slow) debug print out of all data points
                 //char tmpMsg[300];               
-                //sprintf(tmpMsg, "index=%d image[%d,%d]=%lf", index,x,y,values[index]);
+                //printf("index=%d image[%d,%d]=%lf\n", index,x,y,values[index]);
                 //debug(functionName,tmpMsg);
                 // If this is the first iteration set the image values, otherwise add them to the current values
                 if (iteration == 0){
-                  pNDImage[(y * energyChannels) + x] = values[index];
+                  //pNDImage[(y * energyChannels) + x] = values[index];
                   image[(y * energyChannels) + x] = values[index];
                 } else {
-                  pNDImage[(y * energyChannels) + x] += values[index];
+                  //pNDImage[(y * energyChannels) + x] += values[index];
                   image[(y * energyChannels) + x] += values[index];
                 }
                 // Integrate for the spectrum
@@ -604,7 +609,7 @@ void SpecsAnalyser::specsAnalyserTask()
             }
             // Notify listeners of the update to the image data
             doCallbacksFloat64Array(image, (energyChannels*nonEnergyChannels), SPECSAcqImage_, 0);
-        
+
             // Set the percent complete and current sample number
             setIntegerParam(SPECSPercentCompleteIteration_, (int)(((currentDataPoint)*100)/energyChannels));
             setIntegerParam(SPECSPercentComplete_, (int)(((currentDataPoint+(iteration*energyChannels))*100)/(iterations*energyChannels)));
@@ -624,6 +629,7 @@ void SpecsAnalyser::specsAnalyserTask()
           }
           // Check the acquisition status (user may have pressed abort button)
           getIntegerParam(ADAcquire, &acquire);
+
         } //while
         if (data["ControllerState"] == "error"){
           status = asynError;
@@ -634,14 +640,20 @@ void SpecsAnalyser::specsAnalyserTask()
           else  
             setStringParam(ADStatusMessage, "SPECS Controller Error, see log");
         }
-
         // Check the acquisition status
         getIntegerParam(ADAcquire, &acquire);
         // Increase the iteration
-        iteration++;
+        iteration = iteration + 1;
         // End of the iteration loop
       }
 
+      pImage->pData = image;
+      /*
+      pNDImage = (double *)(pImage->pData);
+      for (int x = 0; x < energyChannels*nonEnergyChannels; x++){
+        pNDImage[x] = image[x];
+      }
+      */
 
       pImage->dims[0].size = dims[0];
       pImage->dims[1].size = dims[1];
@@ -662,7 +674,6 @@ void SpecsAnalyser::specsAnalyserTask()
 
       // Get any attributes that have been defined for this driver
       this->getAttributes(pImage->pAttributeList);
-
       if (arrayCallbacks){
         // Must release the lock here, or we can get into a deadlock, because we can
         // block on the plugin lock, and the plugin can be calling us
@@ -675,16 +686,21 @@ void SpecsAnalyser::specsAnalyserTask()
       // Free the image buffer
       pImage->release();
 
+      //printf("%i,%i\n",dims[0],dims[1]);
+      //printf("%d\n",pNDImage[0]);
+      //printf("%d\n",pNDImage[9999]);
+      //printf(dataType);
+
       if (status != asynError){
         // Check to see if acquisition is complete
-        if ((imageMode == ADImageSingle) || ((imageMode == ADImageMultiple) && (numImagesCounter >= numImages))){
+        if (numImagesCounter >= numImages){
+          printf("Acquisition completed\n");
           setIntegerParam(ADAcquire, 0);
           debug(functionName, "Acquisition completed");
         }
         // Call the callbacks to update any changes
         callParamCallbacks();
         getIntegerParam(ADAcquire, &acquire);
-
         // If we are acquiring then sleep for the acquire period minus elapsed time.
         if (acquire){
           epicsTimeGetCurrent(&endTime);
@@ -700,6 +716,13 @@ void SpecsAnalyser::specsAnalyserTask()
             this->lock();
           }
         }
+      }
+      else {
+      acquire = 0;
+      printf("Acquisition Error\n");
+      setIntegerParam(ADAcquire, 0);
+      debug(functionName, "Acquisition Error");
+      callParamCallbacks();
       }
     }
   }
@@ -1364,6 +1387,66 @@ asynStatus SpecsAnalyser::readDeviceVisibleName()
  * This method sets up the analyser parameters that are not known prior to
  * connecting to the device.
  */
+asynStatus SpecsAnalyser::setupEPICSDevices()
+{
+  const char * functionName = "SpecsAnalyser::setupEPICSDevices";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::vector<std::string> names;
+  std::locale loc;
+
+  // First call getAllAnalyzerParameterNames to get the list of parameters
+  status = sendSimpleCommand(SPECS_CMD_GET_ALL_DEVICE, &data);
+  debug(functionName, "Returned device map", data);
+  if (status == asynSuccess){
+    std::string nameString = data["DeviceCommands"];
+    // Clean any [] and whitespace from the ends of the string
+    cleanString(nameString, "[]");
+    // Now loop over the remainder of the string and search for names
+    // Create a small state machine for this
+    int insideQuotes = 0;
+    std::string name;
+    std::string rawname;
+    for (unsigned int index = 0; index < nameString.length(); index++){
+      // Get the current character
+      std::string cc = nameString.substr(index, 1);
+      // Are we inside quotes (reading out a name)
+      if (insideQuotes == 1){
+        // Is the character a space
+        if (cc == " " || cc == "[" || cc == "]" || cc == "/"){
+          // We do not specials in the parameter name but we do need them in the SPECS name
+          rawname += cc;
+        } else if (cc == "\""){
+          debug(functionName, "Parameter found", name);
+          // The parameter name is complete, record it
+          paramMap_[name] = rawname;
+          // Reset the name variable
+          name = "";
+          // Reset the rawname variable
+          rawname = "";
+          // Notify we are no longer inside quotes
+          insideQuotes = 0;
+        } else {
+          // This is part of the parameter name, record it
+          name += std::toupper(cc[0], loc);
+          rawname += cc;
+        }
+      } else {
+        // Here we are only really looking for opening quotation marks
+        std::string cc = nameString.substr(index, 1);
+        if (cc == "\""){
+          insideQuotes = 1;
+        }
+      }
+    }
+  }
+  return status;
+}
+
+/**
+ * This method sets up the analyser parameters that are not known prior to
+ * connecting to the device.
+ */
 asynStatus SpecsAnalyser::setupEPICSParameters()
 {
   const char * functionName = "SpecsAnalyser::setupEPICSParameters";
@@ -1691,26 +1774,27 @@ asynStatus SpecsAnalyser::readSpectrumParameter(int param){
   if (status == asynSuccess) {
       debug(functionName, "Got params:", data["Values"]);
 
-      if (data.find("Values") != data.end()) {
-	  std::stringstream stringStream(data["Values"]);
-	  std::string token;
+    if (data.find("Values") != data.end()) {
+      std::stringstream stringStream(data["Values"]);
+      std::string token;
 
-	  // Pull out the individual tokens and clean them up
-	  while(!stringStream.eof()) {
-	      std::getline(stringStream, token, ',');
-	      debug(functionName, token);
-	      // std::remove moves all instances of character to end of string and returns position of
-	      // first removed character in new string. erase then truncates the string at that point.
-	      token.erase(std::remove(token.begin(), token.end(), '\"'), token.end());
-	      token.erase(std::remove(token.begin(), token.end(), '['), token.end());
-	      token.erase(std::remove(token.begin(), token.end(), ']'), token.end());
-	      debug(functionName, token);
-	      store->push_back(token);
-	  }
-      } else {
+      // Pull out the individual tokens and clean them up
+      while(!stringStream.eof()) {
+          std::getline(stringStream, token, ',');
+          debug(functionName, token);
+          // std::remove moves all instances of character to end of string and returns position of
+          // first removed character in new string. erase then truncates the string at that point.
+          token.erase(std::remove(token.begin(), token.end(), '\"'), token.end());
+          token.erase(std::remove(token.begin(), token.end(), '['), token.end());
+          token.erase(std::remove(token.begin(), token.end(), ']'), token.end());
+          debug(functionName, token);
+          store->push_back(token);
+      }
+    } 
+    else {
 	  debug(functionName, "No values returned for param ", paramName);
 	  status = asynError;
-      }
+    }
   }
 
   // We need to make sure that enum field always contains at least one entry to avoid EDM problems
