@@ -13,6 +13,7 @@ include $(TOP)/configure/CONFIG
 #
 DB += specsAnalyser.template
 DB += specsAnalyserDLD.template
+DB += specsManipulator.template
 
 #----------------------------------------------------
 # In a Diamond IOC Application, build db files from

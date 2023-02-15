@@ -81,7 +81,8 @@
 #define SPECS_CMD_SET_SAFE_STATE      "SetSafeState"
 
 #define SPECS_CMD_NEW_DIRECT_DEVICE   "CreateDirectDeviceCommand"
-#define SPECS_CMD_GET_DIRECT_INFO     "CreateDirectDeviceCommand"
+#define SPECS_CMD_GET_DIRECT_INFO     "GetDirectDeviceCommandInfo"
+#define SPECS_CMD_GET_DIRECT_PARAM    "GetDirectDeviceParameterInfo"
 #define SPECS_CMD_GET_DIRECT_VALUE    "GetDirectDeviceParameterValue"
 #define SPECS_CMD_SET_DIRECT_VALUE    "SetDirectDeviceParameterValue"
 #define SPECS_CMD_EXE_DIRECT_DEVICE   "ExecuteDirectDeviceCommand"
@@ -128,6 +129,9 @@
 #define SPECSSafeStateString                 "SPECS_SAFE_STATE"
 #define SPECSDataDelayMaxString              "SPECS_DATA_DELAY_MAX"
 
+#define SPECSMoveString                      "SPECS_MOVE_"
+#define SPECSDMoveString                     "SPECS_DMOVE_"
+
 typedef enum
 {
   SPECSTypeDouble,
@@ -164,6 +168,10 @@ class SpecsAnalyser: public ADDriver
     asynStatus readDeviceVisibleName();
     asynStatus setupEPICSParameters();
     asynStatus setupEPICSDevices();
+    asynStatus getDirectParameter(const std::string& name, const std::string& device,double &value);
+    asynStatus setDirectParameter(const std::string& name,const std::string& device, double value);
+    asynStatus getDeviceParameter(const std::string& name, const std::string& device,double &value);
+    asynStatus setDeviceParameter(const std::string& name,const std::string& device, double value);
     asynStatus getAnalyserParameterType(const std::string& name, SPECSValueType_t &value);
     asynStatus getAnalyserParameter(const std::string& name, int &value);
     asynStatus getAnalyserParameter(const std::string& name, double &value);
@@ -246,8 +254,18 @@ class SpecsAnalyser: public ADDriver
     std::vector<std::string>           lensModes_;
     std::vector<std::string>           scanRanges_;
     std::vector<std::string>           runModes_;
+
     std::map<std::string, std::string> paramMap_;
     std::map<int, std::string>         paramIndexes_;
+
+    std::map<std::string, std::string> deviceMap_;
+    std::map<int, std::string>         deviceParamMap_;
+    std::map<int, std::string>         deviceParamIndexes_;
+
+    std::vector<std::string>           template_;
+    std::map<int, std::string>         directParamMap_;
+    std::map<int, std::string>         directParamIndexes_;
+
     bool                               firstConnect_;
 };
 

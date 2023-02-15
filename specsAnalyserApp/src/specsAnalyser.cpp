@@ -1,3 +1,15 @@
+
+/*  
+    - This IOC has been edited to support device MCPS 36 Manipulator with different Axis.
+    - This modification was not based on Motor Record, as we would only use the move() method, the Prodigy software does not allow other configurations.
+    - The logic of this device was developed to facilitate the increment of other devices in the future.
+    - Based on the IOC areaDetector specsAnalyser by Mark Rivers.
+    
+    Developer: Guilherme Rodrigues de Lima
+    Email: guilherme.lima@lnls.br
+    Company: CNPEM/Sirius - Brazil
+*/
+
 #include "specsAnalyser.h"
 
 /**
@@ -205,9 +217,9 @@ asynStatus SpecsAnalyser::makeConnection()
       }
 
       // Setup all of the available device obtained from the hardware
-      //if (status == asynSuccess){
-      //  status = setupEPICSDevices();
-      //}
+      if (status == asynSuccess){
+        status = setupEPICSDevices();
+      }
 
       // Publish any updates necessary
       callParamCallbacks();
@@ -288,7 +300,7 @@ void SpecsAnalyser::specsAnalyserTask()
   NDArray *pImage;
   size_t dims[2];
   NDDataType_t dataType;
-  epicsFloat64 *pNDImage = 0;
+  //epicsFloat64 *pNDImage = 0;
   epicsFloat64 *image = 0;
   epicsFloat64 *spectrum = 0;
   int nonEnergyChannels = 0;
@@ -487,8 +499,14 @@ void SpecsAnalyser::specsAnalyserTask()
       while((iteration < iterations) && (acquire == 1)){
         // Clear any stale data from previous acquisitions
         sendSimpleCommand(SPECS_CMD_CLEAR);
+
         // Send the start command
-        sendStartCommand(safeState);
+        if (iteration < iterations-1) {
+          sendStartCommand(0);
+        }
+        else {
+          sendStartCommand(safeState);
+        }
 
         std::vector<double> values;
         currentDataPoint = 0;
@@ -647,7 +665,9 @@ void SpecsAnalyser::specsAnalyserTask()
         // End of the iteration loop
       }
 
-      pImage->pData = image;
+      memmove(pImage->pData,image,pImage->dataSize);
+      //pImage->pData = image;
+
       /*
       pNDImage = (double *)(pImage->pData);
       for (int x = 0; x < energyChannels*nonEnergyChannels; x++){
@@ -685,11 +705,6 @@ void SpecsAnalyser::specsAnalyserTask()
 
       // Free the image buffer
       pImage->release();
-
-      //printf("%i,%i\n",dims[0],dims[1]);
-      //printf("%d\n",pNDImage[0]);
-      //printf("%d\n",pNDImage[9999]);
-      //printf(dataType);
 
       if (status != asynError){
         // Check to see if acquisition is complete
@@ -960,6 +975,55 @@ asynStatus SpecsAnalyser::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
   getDoubleParam(function, &oldValue);
   setDoubleParam(function, value);
   getIntegerParam(ADStatus, &adstatus);
+
+  // Check if the function is one of our stored direct index values
+  if (directParamIndexes_.count(function) == 1){
+    // Clear any stale data from previous acquisitions
+    sendSimpleCommand(SPECS_CMD_CLEAR);
+    // This means the parameter was read out from the SPECS hardware at startup
+    debug(functionName, "Update request of direct", directParamMap_[function]);
+    debug(functionName, "Update request of parameter", directParamIndexes_[function]);
+    debug(functionName, "New Value", value);
+
+    status = setDirectParameter(directParamIndexes_[function],directParamMap_[function], value);
+
+    if (status == asynSuccess){
+
+      double newValue = 0.0;
+      if (status == asynSuccess){
+        status = getDirectParameter(directParamIndexes_[function],directParamMap_[function], newValue);
+        if (status == asynSuccess){
+          status = sendSimpleCommand(SPECS_CMD_EXE_DIRECT_DEVICE);
+        }
+      }
+      if (status == asynSuccess){
+        setDoubleParam(function, newValue);
+      } else {
+        setDoubleParam(function, oldValue);
+      }
+    }
+  }
+
+  // Check if the function is one of our stored device index values
+  if (deviceParamIndexes_.count(function) == 1){
+    // Clear any stale data from previous acquisitions
+    sendSimpleCommand(SPECS_CMD_CLEAR);
+    // This means the parameter was read out from the SPECS hardware at startup
+    debug(functionName, "Update request of device", deviceParamMap_[function]);
+    debug(functionName, "Update request of parameter", deviceParamIndexes_[function]);
+    debug(functionName, "New Value", value);
+
+    status = setDeviceParameter(deviceParamIndexes_[function],deviceParamMap_[function], value);
+    double newValue = 0.0;
+    if (status == asynSuccess){
+      status = getDeviceParameter(deviceParamIndexes_[function],deviceParamMap_[function], newValue);
+    }
+    if (status == asynSuccess){
+      setDoubleParam(function, newValue);
+    } else {
+      setDoubleParam(function, oldValue);
+    }
+  }
 
   // Check if the function is one of our stored parameter index values
   if (paramIndexes_.count(function) == 1){
@@ -1395,7 +1459,7 @@ asynStatus SpecsAnalyser::setupEPICSDevices()
   std::vector<std::string> names;
   std::locale loc;
 
-  // First call getAllAnalyzerParameterNames to get the list of parameters
+  // First call getAllDeviceName to get the list of device
   status = sendSimpleCommand(SPECS_CMD_GET_ALL_DEVICE, &data);
   debug(functionName, "Returned device map", data);
   if (status == asynSuccess){
@@ -1417,9 +1481,9 @@ asynStatus SpecsAnalyser::setupEPICSDevices()
           // We do not specials in the parameter name but we do need them in the SPECS name
           rawname += cc;
         } else if (cc == "\""){
-          debug(functionName, "Parameter found", name);
-          // The parameter name is complete, record it
-          paramMap_[name] = rawname;
+          debug(functionName, "Device found", name);
+          // The device name is complete, record it
+          deviceMap_[name] = rawname;
           // Reset the name variable
           name = "";
           // Reset the rawname variable
@@ -1440,6 +1504,107 @@ asynStatus SpecsAnalyser::setupEPICSDevices()
       }
     }
   }
+  debug(functionName, "Constructed device map", deviceMap_);
+
+  // Now loop over deviceMap_, find the MCPS 36 Manipulator and integrate other devices in the future
+
+  std::map<std::string, std::string>::iterator iter;
+  std::string cmd;
+
+  for (iter = deviceMap_.begin(); iter != deviceMap_.end(); iter++){
+    debug(functionName, "Device", iter->second.c_str());
+
+    if (strstr(iter->second.c_str(), "MCPS 36 Manipulator") != NULL) {
+
+      cmd = SPECS_CMD_GET_DEVICE_NAME;
+      status = sendSimpleCommand(cmd + " DeviceCommand:\"" + iter->second + "\"", &data);
+
+      if (status == asynSuccess){
+
+        debug(functionName, "ParameterNames:", data["ParameterNames"]);
+        std::stringstream stringStream(data["ParameterNames"]);
+        std::string token;
+
+        // Pull out the individual tokens and clean them up
+        while(!stringStream.eof()) {
+            std::getline(stringStream, token, ',');
+            // std::remove moves all instances of character to end of string and returns position of
+            // first removed character in new string. erase then truncates the string at that point.
+            token.erase(std::remove(token.begin(), token.end(), '\"'), token.end());
+            token.erase(std::remove(token.begin(), token.end(), '['), token.end());
+            token.erase(std::remove(token.begin(), token.end(), ']'), token.end());
+            debug(functionName, token);
+
+            //printf("Axis Manipulator: %s\n",token.c_str());
+
+            // Create an integer parameter
+            int index = 0;
+            createParam((SPECSMoveString+token).c_str(), asynParamFloat64, &index);
+            deviceParamMap_[index] = iter->second;
+            deviceParamIndexes_[index] = token;
+
+            // Read the value and set it
+            double dvalue = 0.0;
+            status = getDeviceParameter(token, iter->second, dvalue);
+            if (status == asynSuccess){
+              setDoubleParam(index, dvalue);
+            }
+          }
+      }
+    }
+  }
+
+  //Create template to device (Declared name of the template in vetor template_)
+  template_ = {"Manipulator"};
+  std::vector<std::string>::iterator iter2;
+
+  for (iter2 = template_.begin(); iter2 != template_.end(); ++iter2){
+
+    debug(functionName, "Device Template", *iter2);
+
+    //Load templete device
+    asynStatus statusTemplate = asynSuccess;
+    cmd = SPECS_CMD_NEW_DIRECT_DEVICE;
+    statusTemplate = sendSimpleCommand(cmd + " Template:\""+*iter2+"\"", &data);
+    std::string templateString = data["DeviceCommands"];
+    cleanString(templateString, "[\"]");
+
+    if (statusTemplate == asynSuccess){
+      debug(functionName, "Template Manipulator:", templateString.c_str());
+
+      cmd = SPECS_CMD_GET_DIRECT_INFO;
+      status = sendSimpleCommand(cmd + " DeviceCommand:\"" + templateString + "\"", &data);
+      std::stringstream stringStream(data["ParameterNames"]);
+      std::string token;
+
+      debug(functionName, "ParameterNames:", data["ParameterNames"]);
+
+      // Pull out the individual tokens and clean them up
+      while(!stringStream.eof()) {
+        std::getline(stringStream, token, ',');
+        // std::remove moves all instances of character to end of string and returns position of
+        // first removed character in new string. erase then truncates the string at that point.
+        token.erase(std::remove(token.begin(), token.end(), '\"'), token.end());
+        token.erase(std::remove(token.begin(), token.end(), '['), token.end());
+        token.erase(std::remove(token.begin(), token.end(), ']'), token.end());
+        debug(functionName, token);
+
+        // Create an integer parameter
+        int index = 0;
+        createParam((SPECSDMoveString+token).c_str(), asynParamFloat64, &index);
+        directParamMap_[index] = templateString;
+        directParamIndexes_[index] = token;
+
+        // Read the value and set it
+        double dvalue = 0.0;
+        status = getDirectParameter(token, templateString, dvalue);
+        if (status == asynSuccess){
+          setDoubleParam(index, dvalue);
+        }
+      }
+    }
+  }
+ 
   return status;
 }
 
@@ -1571,6 +1736,70 @@ asynStatus SpecsAnalyser::setupEPICSParameters()
     }
     debug(functionName, "Constructed paramIndexes_", paramIndexes_);
 
+  }
+  return status;
+}
+
+asynStatus SpecsAnalyser::setDirectParameter(const std::string& name,const std::string& device, double value)
+{
+  const char * functionName = "SpecsAnalyser::setDirectParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_SET_DIRECT_VALUE;
+  std::stringstream svalue;
+  
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Device", device);
+  debug(functionName, "Value", value);
+  svalue << value;
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\" DeviceCommand:\""+ device +"\" Value:"+svalue.str(), &data);
+  return status;
+}
+
+asynStatus SpecsAnalyser::getDirectParameter(const std::string& name, const std::string& device,double &value)
+{
+  const char * functionName = "SpecsAnalyser::getDirectParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_GET_DIRECT_VALUE;
+
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Device", device);
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\" DeviceCommand:\""+ device +"\"", &data);
+  if (status == asynSuccess){
+    status = readDoubleData(data, "Value", value);
+  }
+  return status;
+}
+
+asynStatus SpecsAnalyser::setDeviceParameter(const std::string& name,const std::string& device, double value)
+{
+  const char * functionName = "SpecsAnalyser::setDeviceParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_SET_DEVICE_VALUE;
+  std::stringstream svalue;
+  
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Device", device);
+  debug(functionName, "Value", value);
+  svalue << value;
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\" DeviceCommand:\""+ device +"\" Value:"+svalue.str(), &data);
+  return status;
+}
+
+asynStatus SpecsAnalyser::getDeviceParameter(const std::string& name, const std::string& device,double &value)
+{
+  const char * functionName = "SpecsAnalyser::getDeviceParameter";
+  asynStatus status = asynSuccess;
+  std::map<std::string, std::string> data;
+  std::string cmd = SPECS_CMD_GET_DEVICE_VALUE;
+
+  debug(functionName, "Parameter", name);
+  debug(functionName, "Device", device);
+  status = sendSimpleCommand(cmd + " ParameterName:\"" + name + "\" DeviceCommand:\""+ device +"\"", &data);
+  if (status == asynSuccess){
+    status = readDoubleData(data, "Value", value);
   }
   return status;
 }
@@ -2240,8 +2469,14 @@ asynStatus SpecsAnalyser::initDebugger(int initDebug)
   debugMap_["SpecsAnalyser::readAcquisitionData"]      = initDebug;
   debugMap_["SpecsAnalyser::sendSimpleCommand"]        = initDebug;
   debugMap_["SpecsAnalyser::setupEPICSParameters"]     = initDebug;
+  debugMap_["SpecsAnalyser::setupEPICSDevices"]        = initDebug;
+  debugMap_["SpecsAnalyser::getDirectParameter"]       = initDebug;
+  debugMap_["SpecsAnalyser::setDirectParameter"]       = initDebug;
+  debugMap_["SpecsAnalyser::getDeviceParameter"]       = initDebug;
+  debugMap_["SpecsAnalyser::setDeviceParameter"]       = initDebug;
   debugMap_["SpecsAnalyser::getAnalyserParameterType"] = initDebug;
   debugMap_["SpecsAnalyser::getAnalyserParameter"]     = initDebug;
+  debugMap_["SpecsAnalyser::setAnalyserParameter"]     = initDebug;
   debugMap_["SpecsAnalyser::readIntegerData"]          = initDebug;
   debugMap_["SpecsAnalyser::readDoubleData"]           = initDebug;
   debugMap_["SpecsAnalyser::readSpectrumParameter"]    = initDebug;
@@ -2269,6 +2504,11 @@ asynStatus SpecsAnalyser::debugLevel(const std::string& method, int onOff)
     debugMap_["SpecsAnalyser::readAcquisitionData"]      = onOff;
     debugMap_["SpecsAnalyser::sendSimpleCommand"]        = onOff;
     debugMap_["SpecsAnalyser::setupEPICSParameters"]     = onOff;
+    debugMap_["SpecsAnalyser::setupEPICSDevices"]        = onOff;
+    debugMap_["SpecsAnalyser::getDirectParameter"]       = onOff;
+    debugMap_["SpecsAnalyser::setDirectParameter"]       = onOff;
+    debugMap_["SpecsAnalyser::getDeviceParameter"]       = onOff;
+    debugMap_["SpecsAnalyser::setDeviceParameter"]       = onOff;
     debugMap_["SpecsAnalyser::getAnalyserParameterType"] = onOff;
     debugMap_["SpecsAnalyser::getAnalyserParameter"]     = onOff;
     debugMap_["SpecsAnalyser::readIntegerData"]          = onOff;

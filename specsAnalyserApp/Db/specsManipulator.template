@@ -1,0 +1,48 @@
+#    - This IOC has been edited to support MCPS 36 Manipulator with different Axis.
+#    - This modification was not based on Motor Record, as we would only use the move() method, the Prodigy software does not allow other configurations.
+#    - The logic of this device was developed to facilitate the increment of other devices in the future.
+#    - Based on the IOC areaDetector specsAnalyser by Mark Rivers.
+#    
+#     Developer: Guilherme Rodrigues de Lima
+#     Email: guilherme.lima@lnls.br
+#     Company: CNPEM/Sirius - Brazil
+#
+
+record(ao, "$(P)$(R)Axis_$(M)")
+{
+   field(DTYP, "asynFloat64")
+   field(OUT,  "@asyn($(PORT),0)SPECS_MOVE_$(M)")
+   field(EGU, "$(EGU)")
+   field(PREC, "6")
+}
+
+record(ai, "$(P)$(R)Axis_$(M)_RBV")
+{
+   field(DTYP, "asynFloat64")
+   field(INP,  "@asyn($(PORT),0)SPECS_MOVE_$(M)")
+   field(PREC, "6")
+   field(EGU, "$(EGU)")
+   field(SCAN, "I/O Intr")
+}
+
+########### Direct Move ############
+#NOTE: Perform direct movements without the need to run the acquisition.
+#It is necessary to create a template with the device MCPS 36 Manipulator with the name "Manipulator"
+#For more information read the Remote Control programmer's manual 2.37 CreateDirectDeviceCommand
+
+record(ao, "$(P)$(R)Axis_Direct_$(M)")
+{
+   field(DTYP, "asynFloat64")
+   field(OUT,  "@asyn($(PORT),0)SPECS_DMOVE_$(M)")
+   field(EGU, "$(EGU)")
+   field(PREC, "6")
+}
+
+record(ai, "$(P)$(R)Axis_Direct_$(M)_RBV")
+{
+   field(DTYP, "asynFloat64")
+   field(INP,  "@asyn($(PORT),0)SPECS_DMOVE_$(M)")
+   field(PREC, "6")
+   field(EGU, "$(EGU)")
+   field(SCAN, "I/O Intr")
+}
