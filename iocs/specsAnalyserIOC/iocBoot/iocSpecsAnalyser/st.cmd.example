@@ -31,6 +31,14 @@ dbLoadRecords("$(ASYN)/db/asynRecord.db","P=XF:23ID2-ES{SPECS},R=Asyn,PORT=SPECS
 specsAnalyserConfig("$(PORT)", "SPECS_ASYN", 0, 0)
 specsAnalyserDebug("$(PORT)", "all", 0)
 
+#Configure Manipulator (M = x,y,z,polar,tilt,azimuth) (EGU = mm or degree)
+#dbLoadRecords("$(ADSPECS)/db/specsManipulator.template", "P=$(PREFIX),R=cam1:,M=tilt,EGU=degree,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADSPECS)/db/specsManipulator.template", "P=$(PREFIX),R=cam1:,M=azimuth,EGU=degree,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADSPECS)/db/specsManipulator.template", "P=$(PREFIX),R=cam1:,M=polar,EGU=degree,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADSPECS)/db/specsManipulator.template", "P=$(PREFIX),R=cam1:,M=x,EGU=mm,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADSPECS)/db/specsManipulator.template", "P=$(PREFIX),R=cam1:,M=y,EGU=mm,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+#dbLoadRecords("$(ADSPECS)/db/specsManipulator.template", "P=$(PREFIX),R=cam1:,M=z,EGU=mm,PORT=$(PORT),ADDR=0,TIMEOUT=1")
+
 dbLoadRecords("$(ADSPECS)/db/specsAnalyser.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
 #dbLoadRecords("$(ADSPECS)/db/specsAnalyserDLD.template", "P=$(PREFIX),R=cam1:,PORT=$(PORT),ADDR=0,TIMEOUT=1")
 
